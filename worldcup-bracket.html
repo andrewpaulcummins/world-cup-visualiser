@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 — Knockout Bracket</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --gold-dim: #7A6030;
+    --bg: #0A0A0F;
+    --surface: #111118;
+    --node-bg: #1A1A25;
+    --node-border: #2A2A3A;
+    --text: #E8E0CC;
+    --text-dim: #888070;
+    --win: #4CAF50;
+    --live: #FF4444;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  header {
+    text-align: center;
+    padding: 28px 20px 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dim));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  header p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  #status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  #live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 6px var(--live);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.75); }
+  }
+
+  #bracket-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 10px 40px;
+  }
+
+  svg#bracket-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #1E1E2E;
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: var(--text);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 220px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  }
+  #tooltip.show { opacity: 1; }
+  #tooltip .t-teams { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; color: var(--gold-light); }
+  #tooltip .t-score { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  #tooltip .t-meta { color: var(--text-dim); font-size: 0.7rem; }
+  #tooltip .t-live { color: var(--live); font-weight: 600; }
+
+  /* Legend */
+  #legend {
+    display: flex; flex-wrap: wrap; gap: 18px;
+    justify-content: center;
+    padding: 0 20px 30px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* API Key Panel */
+  #api-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+  }
+
+  #api-toggle {
+    background: none;
+    border: 1px solid var(--node-border);
+    color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  #api-toggle:hover { border-color: var(--gold-dim); color: var(--gold); }
+  #api-toggle.active { border-color: var(--gold); color: var(--gold); }
+
+  #api-form {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 480px;
+    animation: fadeIn 0.2s ease;
+  }
+  #api-form.open { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #api-form p {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  #api-form p a {
+    color: var(--gold-dim);
+    text-decoration: none;
+  }
+  #api-form p a:hover { color: var(--gold); }
+
+  .api-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  #api-key-input {
+    flex: 1;
+    background: #0F0F1A;
+    border: 1px solid var(--node-border);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    padding: 8px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.02em;
+  }
+  #api-key-input:focus { border-color: var(--gold-dim); }
+  #api-key-input::placeholder { color: #444; }
+
+  #api-save-btn {
+    background: var(--gold-dim);
+    border: none;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  #api-save-btn:hover { background: var(--gold); }
+
+  #api-status {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    min-height: 16px;
+  }
+  #api-status.ok  { color: #4CAF50; }
+  #api-status.err { color: var(--live); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FIFA World Cup 2026</h1>
+  <p>Round of 32 — Knockout Bracket</p>
+  <div id="status-bar">
+    <span id="live-dot"></span>
+    <span id="last-updated">Loading…</span>
+    <span>·</span>
+    <span>Updates every 15 min</span>
+  </div>
+</header>
+
+<div id="bracket-wrap">
+  <svg id="bracket-svg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.35"/>
+        <stop offset="60%" stop-color="#C9A84C" stop-opacity="0.05"/>
+        <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="trophyGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#F0D080" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#C9A84C" stop-opacity="0.4"/>
+      </radialGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- Background glow -->
+    <circle cx="450" cy="450" r="300" fill="url(#centerGlow)"/>
+
+    <!-- Connector lines drawn by JS -->
+    <g id="lines"></g>
+
+    <!-- Nodes drawn by JS -->
+    <g id="nodes"></g>
+
+    <!-- Trophy center -->
+    <g transform="translate(450,450)">
+      <!-- Backdrop circle -->
+      <circle r="58" fill="#080810" stroke="#C9A84C" stroke-width="1.5" opacity="0.95"/>
+      <circle r="54" fill="url(#centerGlow)" opacity="0.5"/>
+
+      <!-- FIFA World Cup Trophy — hand-crafted SVG, scaled to fit ~100px tall centered at 0,0 -->
+      <!-- Scale/translate: trophy spans roughly -22..22 wide, -50..14 tall -->
+      <g transform="translate(0, 2)" filter="url(#glow)">
+        <defs>
+          <linearGradient id="trophyBody" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#8B6914"/>
+            <stop offset="25%"  stop-color="#F0D060"/>
+            <stop offset="50%"  stop-color="#FFF0A0"/>
+            <stop offset="75%"  stop-color="#E8C040"/>
+            <stop offset="100%" stop-color="#7A5C10"/>
+          </linearGradient>
+          <linearGradient id="trophyBase" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#5A4010"/>
+            <stop offset="40%"  stop-color="#C9A030"/>
+            <stop offset="60%"  stop-color="#E8C840"/>
+            <stop offset="100%" stop-color="#5A4010"/>
+          </linearGradient>
+          <linearGradient id="globeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="#D4B030"/>
+            <stop offset="50%"  stop-color="#F8E878"/>
+            <stop offset="100%" stop-color="#B08820"/>
+          </linearGradient>
+        </defs>
+
+        <!-- BASE PEDESTAL — green malachite-style layered block -->
+        <!-- Bottom wide base -->
+        <rect x="-20" y="38" width="40" height="5" rx="1"
+              fill="url(#trophyBase)" opacity="0.95"/>
+        <!-- Step 2 -->
+        <rect x="-16" y="33" width="32" height="6" rx="1"
+              fill="url(#trophyBase)" opacity="0.95"/>
+        <!-- Step 3 / neck connector -->
+        <rect x="-10" y="28" width="20" height="6" rx="1"
+              fill="url(#trophyBase)" opacity="0.95"/>
+
+        <!-- STEM — narrow neck rising from pedestal -->
+        <path d="M-5,28 C-5,14 -7,6 -7,2 L7,2 C7,6 5,14 5,28 Z"
+              fill="url(#trophyBody)"/>
+
+        <!-- COLLAR ring where stem meets cup -->
+        <ellipse cx="0" cy="2" rx="8" ry="3" fill="#E8C040"/>
+        <ellipse cx="0" cy="2" rx="6" ry="2" fill="#FFF080"/>
+
+        <!-- GLOBE — the world on top -->
+        <circle cx="0" cy="-12" r="14" fill="url(#globeGrad)"/>
+        <!-- Globe latitude lines -->
+        <ellipse cx="0" cy="-12" rx="14" ry="4" fill="none" stroke="#C9A030" stroke-width="0.6" opacity="0.5"/>
+        <ellipse cx="0" cy="-12" rx="14" ry="8" fill="none" stroke="#C9A030" stroke-width="0.6" opacity="0.4"/>
+        <!-- Globe longitude lines -->
+        <path d="M0,-26 C6,-22 6,-2 0,2" fill="none" stroke="#C9A030" stroke-width="0.6" opacity="0.5"/>
+        <path d="M0,-26 C-6,-22 -6,-2 0,2" fill="none" stroke="#C9A030" stroke-width="0.6" opacity="0.5"/>
+        <!-- Globe shimmer highlight -->
+        <circle cx="-4" cy="-18" r="5" fill="white" opacity="0.18"/>
+
+        <!-- LEFT FIGURE — human silhouette arms up -->
+        <!-- Body -->
+        <path d="M-22,-6 C-20,-10 -18,-12 -16,-8 L-14,-4 C-16,0 -16,4 -14,8 L-16,8 C-18,4 -20,0 -22,-6Z"
+              fill="url(#trophyBody)"/>
+        <!-- Left arm raised -->
+        <path d="M-16,-8 C-20,-14 -20,-20 -16,-22 C-14,-20 -13,-16 -14,-12 Z"
+              fill="url(#trophyBody)"/>
+        <!-- Left leg -->
+        <path d="M-14,8 L-15,18 L-13,18 L-13,8Z" fill="url(#trophyBody)"/>
+        <path d="M-16,8 L-17,18 L-15,18 L-14,8Z" fill="url(#trophyBody)"/>
+        <!-- Left head -->
+        <circle cx="-18" cy="-13" r="3" fill="url(#trophyBody)"/>
+
+        <!-- RIGHT FIGURE — mirror -->
+        <path d="M22,-6 C20,-10 18,-12 16,-8 L14,-4 C16,0 16,4 14,8 L16,8 C18,4 20,0 22,-6Z"
+              fill="url(#trophyBody)"/>
+        <!-- Right arm raised -->
+        <path d="M16,-8 C20,-14 20,-20 16,-22 C14,-20 13,-16 14,-12 Z"
+              fill="url(#trophyBody)"/>
+        <!-- Right leg -->
+        <path d="M14,8 L15,18 L13,18 L13,8Z" fill="url(#trophyBody)"/>
+        <path d="M16,8 L17,18 L15,18 L14,8Z" fill="url(#trophyBody)"/>
+        <!-- Right head -->
+        <circle cx="18" cy="-13" r="3" fill="url(#trophyBody)"/>
+
+        <!-- Subtle glow around globe -->
+        <circle cx="0" cy="-12" r="16" fill="none" stroke="#F0D060" stroke-width="1" opacity="0.3"/>
+      </g>
+    </g>
+  </svg>
+</div>
+
+<div id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#C9A84C"></div>Scheduled</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FF4444"></div>Live</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>Final Result</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3A8FFF"></div>Winner Advances</div>
+</div>
+
+<div id="api-panel">
+  <button id="api-toggle" onclick="toggleApiPanel()">⚙ Use your own API key</button>
+  <div id="api-form">
+    <p>Running locally? Enter your <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic API key</a> to enable live score fetching.<br>Saved only in your browser localStorage — never sent anywhere except api.anthropic.com.</p>
+    <div class="api-row">
+      <input id="api-key-input" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"/>
+      <button id="api-save-btn" onclick="saveApiKey()">Save &amp; Refresh</button>
+    </div>
+    <div id="api-status"></div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+// Country flag emoji map
+const FLAGS = {
+  BRA:'🇧🇷', JPN:'🇯🇵', GER:'🇩🇪', PAR:'🇵🇾', FRA:'🇫🇷', SWE:'🇸🇪',
+  NED:'🇳🇱', MAR:'🇲🇦', CIV:'🇨🇮', NOR:'🇳🇴', MEX:'🇲🇽', ECU:'🇪🇨',
+  ENG:'🇬🇧', COD:'🇨🇩', BEL:'🇧🇪', SEN:'🇸🇳', USA:'🇺🇸', BIH:'🇧🇦',
+  ESP:'🇪🇸', AUT:'🇦🇹', POR:'🇵🇹', CRO:'🇭🇷', CAN:'🇨🇦', RSA:'🇿🇦',
+  ARG:'🇦🇷', DZA:'🇩🇿', GHA:'🇬🇭', COL:'🇨🇴', EGY:'🇪🇬',
+  AUS:'🇦🇺', CHE:'🇨🇭', CPV:'🇨🇻'
+};
+
+const NAMES = {
+  BRA:'Brazil', JPN:'Japan', GER:'Germany', PAR:'Paraguay', FRA:'France',
+  SWE:'Sweden', NED:'Netherlands', MAR:'Morocco', CIV:'Ivory Coast',
+  NOR:'Norway', MEX:'Mexico', ECU:'Ecuador', ENG:'England', COD:'Congo DR',
+  BEL:'Belgium', SEN:'Senegal', USA:'USA', BIH:'Bosnia & Herz.', ESP:'Spain',
+  AUT:'Austria', POR:'Portugal', CRO:'Croatia', CAN:'Canada', RSA:'S. Africa',
+  ARG:'Argentina', DZA:'Algeria', GHA:'Ghana', COL:'Colombia', EGY:'Egypt',
+  AUS:'Australia', CHE:'Switzerland', CPV:'Cape Verde'
+};
+
+// The 16 R32 matchups in order around the circle (32 teams → 16 matches)
+// Each pair appears adjacently on the ring; they connect to an R16 node
+const MATCHUPS = [
+  { id:'m1',  home:'BRA', away:'JPN' },   // Brazil vs Japan
+  { id:'m2',  home:'GER', away:'PAR' },   // Germany vs Paraguay
+  { id:'m3',  home:'NED', away:'MAR' },   // Netherlands vs Morocco
+  { id:'m4',  home:'FRA', away:'SWE' },   // France vs Sweden
+  { id:'m5',  home:'CIV', away:'NOR' },   // Ivory Coast vs Norway
+  { id:'m6',  home:'MEX', away:'ECU' },   // Mexico vs Ecuador
+  { id:'m7',  home:'ENG', away:'COD' },   // England vs Congo DR
+  { id:'m8',  home:'BEL', away:'SEN' },   // Belgium vs Senegal
+  { id:'m9',  home:'USA', away:'BIH' },   // USA vs Bosnia & Herzegovina
+  { id:'m10', home:'COL', away:'GHA' },   // Colombia vs Ghana
+  { id:'m11', home:'ESP', away:'AUT' },   // Spain vs Austria
+  { id:'m12', home:'POR', away:'CRO' },   // Portugal vs Croatia
+  { id:'m13', home:'EGY', away:'AUS' },   // Egypt vs Australia
+  { id:'m14', home:'ARG', away:'CPV' },   // Argentina vs Cape Verde
+  { id:'m15', home:'RSA', away:'CAN' },   // South Africa vs Canada
+  { id:'m16', home:'DZA', away:'CHE' },   // Algeria vs Switzerland
+];
+
+// API data keyed by "HOME-AWAY"
+let liveData = {};
+
+// ─── API KEY MANAGEMENT ───────────────────────────────────────────────────────
+
+const KEY_STORAGE = 'wc2026_api_key';
+
+function getApiKey() {
+  return localStorage.getItem(KEY_STORAGE) || '';
+}
+
+function toggleApiPanel() {
+  const form = document.getElementById('api-form');
+  const btn  = document.getElementById('api-toggle');
+  const open = form.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  if (open) {
+    const saved = getApiKey();
+    const input = document.getElementById('api-key-input');
+    if (saved) {
+      input.value = saved;
+      setApiStatus('✓ Key loaded from localStorage', 'ok');
+    }
+    input.focus();
+  }
+}
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    setApiStatus('Key should start with sk-ant-…', 'err');
+    return;
+  }
+  localStorage.setItem(KEY_STORAGE, val);
+  setApiStatus('✓ Saved! Fetching scores…', 'ok');
+  fetchScores();
+}
+
+function setApiStatus(msg, type) {
+  const el = document.getElementById('api-status');
+  el.textContent = msg;
+  el.className = type || '';
+}
+
+// Allow Enter key in input
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('api-key-input');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+  // Pre-fill if key already stored
+  const saved = getApiKey();
+  if (saved) {
+    setApiStatus('✓ API key found in localStorage', 'ok');
+  }
+});
+
+async function fetchScores() {
+  const userKey = getApiKey();
+  try {
+    // We call Claude API with web search to get current scores
+    const headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+    if (userKey) headers['x-api-key'] = userKey;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `You are a sports data API. Return ONLY a JSON array, no markdown, no explanation.
+Each element: {"home":"CODE","away":"CODE","homeScore":N,"awayScore":N,"status":"scheduled|live|final","minute":"optional"}
+Use 3-letter FIFA codes. Status: "live" if in progress, "final" if done, "scheduled" if not started.
+Include these WC 2026 R32 matches only. If unsure of score use 0-0 and status scheduled.`,
+        messages: [{
+          role: 'user',
+          content: `Get current scores for FIFA World Cup 2026 Round of 32 matches. Today is ${new Date().toDateString()}.
+Matches: BRA vs JPN, GER vs PAR, NED vs MAR, FRA vs SWE, CIV vs NOR, MEX vs ECU, ENG vs COD,
+BEL vs SEN, USA vs BIH, COL vs GHA, ESP vs AUT, POR vs CRO, EGY vs AUS, ARG vs CPV, RSA vs CAN, DZA vs CHE.`
+        }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+      })
+    });
+    const data = await res.json();
+    // Extract text from response
+    const textBlocks = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const clean = textBlocks.replace(/```json|```/g, '').trim();
+    // Find JSON array
+    const match = clean.match(/\[[\s\S]*\]/);
+    if (match) {
+      const scores = JSON.parse(match[0]);
+      liveData = {};
+      scores.forEach(s => {
+        liveData[`${s.home}-${s.away}`] = s;
+        liveData[`${s.away}-${s.home}`] = { ...s, home: s.away, away: s.home, homeScore: s.awayScore, awayScore: s.homeScore };
+      });
+    }
+  } catch(e) {
+    console.warn('Score fetch failed, using seed data', e);
+    setApiStatus('⚠ Fetch failed — showing cached data. Check your key.', 'err');
+    // Fallback: seed from known results at build time
+    seedKnownData();
+  }
+  render();
+}
+
+function seedKnownData() {
+  // Fallback shown only if API fetch fails — all scheduled by default
+  const known = [
+    { home:'BRA', away:'JPN', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'RSA', away:'CAN', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'GER', away:'PAR', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'NED', away:'MAR', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'FRA', away:'SWE', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'CIV', away:'NOR', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'MEX', away:'ECU', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'ENG', away:'COD', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'BEL', away:'SEN', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'USA', away:'BIH', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'COL', away:'GHA', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'ESP', away:'AUT', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'POR', away:'CRO', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'EGY', away:'AUS', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'ARG', away:'CPV', homeScore:0, awayScore:0, status:'scheduled' },
+    { home:'DZA', away:'CHE', homeScore:0, awayScore:0, status:'scheduled' },
+  ];
+  liveData = {};
+  known.forEach(s => {
+    liveData[`${s.home}-${s.away}`] = s;
+  });
+}
+
+// ─── LAYOUT ──────────────────────────────────────────────────────────────────
+
+const CX = 450, CY = 450;
+const R_OUTER = 390;   // team nodes radius
+const R_MID   = 260;   // match midpoint / R16 nodes
+const R_QF    = 160;   // quarter-final nodes
+const R_SF    = 95;    // semi-final nodes
+
+// 16 matches, each gets an angular slot
+// Top starts at -90° (12 o'clock), going clockwise
+function angleForMatch(i, total) {
+  return (i / total) * 2 * Math.PI - Math.PI / 2;
+}
+
+function polar(cx, cy, r, angle) {
+  return {
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle)
+  };
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+
+function getMatchData(home, away) {
+  return liveData[`${home}-${away}`] || liveData[`${away}-${home}`] || null;
+}
+
+function nodeColor(status, isWinner) {
+  if (isWinner) return '#3A8FFF';
+  if (status === 'live') return '#FF4444';
+  if (status === 'final') return '#4CAF50';
+  return '#C9A84C';
+}
+
+function winner(d, home, away) {
+  if (!d || d.status !== 'final') return null;
+  if (d.homeScore > d.awayScore) return d.home;
+  if (d.awayScore > d.homeScore) return d.away;
+  return null; // draw — need extra time in knockouts but we'll show TBD
+}
+
+function render() {
+  const svg = document.getElementById('bracket-svg');
+  const linesG = document.getElementById('lines');
+  const nodesG = document.getElementById('nodes');
+  linesG.innerHTML = '';
+  nodesG.innerHTML = '';
+
+  const N = MATCHUPS.length; // 16
+
+  MATCHUPS.forEach((match, i) => {
+    const angle = angleForMatch(i, N);
+    const halfSlot = (Math.PI / N) * 0.38;
+
+    // Two team positions on outer ring
+    const posHome = polar(CX, CY, R_OUTER, angle - halfSlot);
+    const posAway = polar(CX, CY, R_OUTER, angle + halfSlot);
+    // Match node (midpoint between them, on a slightly inner radius)
+    const posMid  = polar(CX, CY, R_MID, angle);
+    // R16 → QF node
+    const posQF   = polar(CX, CY, R_QF, angle);
+    // QF → SF (group pairs of 4)
+    const sfAngle = angleForMatch(Math.floor(i / 2), N / 2);
+    const posSF   = polar(CX, CY, R_SF, sfAngle);
+
+    const d = getMatchData(match.home, match.away);
+    const w = d ? winner(d, match.home, match.away) : null;
+    const status = d ? d.status : 'scheduled';
+
+    const homeScore = d ? (d.home === match.home ? d.homeScore : d.awayScore) : '-';
+    const awayScore = d ? (d.home === match.home ? d.awayScore : d.homeScore) : '-';
+
+    const matchColor = nodeColor(status, false);
+    const winnerTeam = w;
+
+    // ── Lines ──
+    function line(p1, p2, color = '#2A2A3A', opacity = 0.7, width = 1.2) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      el.setAttribute('x1', p1.x); el.setAttribute('y1', p1.y);
+      el.setAttribute('x2', p2.x); el.setAttribute('y2', p2.y);
+      el.setAttribute('stroke', color);
+      el.setAttribute('stroke-width', width);
+      el.setAttribute('stroke-opacity', opacity);
+      linesG.appendChild(el);
+    }
+
+    // Home → mid
+    line(posHome, posMid, matchColor, 0.5);
+    // Away → mid
+    line(posAway, posMid, matchColor, 0.5);
+    // Mid → QF
+    line(posMid, posQF, w ? '#3A8FFF' : '#2A2A3A', w ? 0.8 : 0.5, w ? 1.5 : 1.2);
+    // QF → SF
+    if (i % 2 === 0) {
+      const sibAngle = angleForMatch(i + 1, N);
+      const sibQF = polar(CX, CY, R_QF, sibAngle);
+      line(posQF, posSF, '#1A1A2A', 0.5);
+      line(sibQF, posSF, '#1A1A2A', 0.5);
+    }
+
+    // ── Team Nodes ──
+    function teamNode(pos, code, isWin) {
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${pos.x},${pos.y})`);
+      g.style.cursor = 'pointer';
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('r', 22);
+      circle.setAttribute('fill', '#0F0F1A');
+      circle.setAttribute('stroke', isWin ? '#3A8FFF' : (status === 'live' ? '#FF4444' : '#2A2A3A'));
+      circle.setAttribute('stroke-width', isWin ? '2.5' : '1.5');
+      g.appendChild(circle);
+
+      const flag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      flag.setAttribute('text-anchor', 'middle');
+      flag.setAttribute('dominant-baseline', 'central');
+      flag.setAttribute('font-size', '18');
+      flag.textContent = FLAGS[code] || '⚽';
+      g.appendChild(flag);
+
+      // Label
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      const lblAngle = Math.atan2(pos.y - CY, pos.x - CX);
+      const outward = lblAngle; // direction away from center
+      const lx = Math.cos(outward) * 30;
+      const ly = Math.sin(outward) * 30;
+      lbl.setAttribute('x', lx); lbl.setAttribute('y', ly);
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('dominant-baseline', 'central');
+      lbl.setAttribute('font-size', '8');
+      lbl.setAttribute('font-family', 'Inter, sans-serif');
+      lbl.setAttribute('fill', isWin ? '#3A8FFF' : '#888070');
+      lbl.setAttribute('font-weight', isWin ? '600' : '400');
+      lbl.textContent = code;
+      g.appendChild(lbl);
+
+      nodesG.appendChild(g);
+      return g;
+    }
+
+    const homeWin = winnerTeam === match.home;
+    const awayWin = winnerTeam === match.away;
+    const gh = teamNode(posHome, match.home, homeWin);
+    const ga = teamNode(posAway, match.away, awayWin);
+
+    // Tooltip setup for home
+    function addTooltip(el, code, isHome) {
+      el.addEventListener('mouseenter', (e) => showTooltip(e, match, d, code, isHome));
+      el.addEventListener('mousemove', (e) => moveTooltip(e));
+      el.addEventListener('mouseleave', hideTooltip);
+    }
+    addTooltip(gh, match.home, true);
+    addTooltip(ga, match.away, false);
+
+    // ── Match mid-node ──
+    const gm = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gm.setAttribute('transform', `translate(${posMid.x},${posMid.y})`);
+    gm.style.cursor = 'pointer';
+
+    const mc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    mc.setAttribute('r', 14);
+    mc.setAttribute('fill', '#0F0F1A');
+    mc.setAttribute('stroke', matchColor);
+    mc.setAttribute('stroke-width', '1.5');
+    gm.appendChild(mc);
+
+    if (d && status !== 'scheduled') {
+      const scoreText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      scoreText.setAttribute('text-anchor', 'middle');
+      scoreText.setAttribute('dominant-baseline', 'central');
+      scoreText.setAttribute('font-size', '8');
+      scoreText.setAttribute('font-family', 'Inter, sans-serif');
+      scoreText.setAttribute('font-weight', '700');
+      scoreText.setAttribute('fill', matchColor);
+      scoreText.textContent = `${homeScore}-${awayScore}`;
+      gm.appendChild(scoreText);
+    } else {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', 3);
+      dot.setAttribute('fill', matchColor);
+      gm.appendChild(dot);
+    }
+
+    gm.addEventListener('mouseenter', (e) => showMatchTooltip(e, match, d));
+    gm.addEventListener('mousemove', moveTooltip);
+    gm.addEventListener('mouseleave', hideTooltip);
+    nodesG.appendChild(gm);
+
+    // Winner QF node
+    if (winnerTeam) {
+      const gqf = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gqf.setAttribute('transform', `translate(${posQF.x},${posQF.y})`);
+      const qfc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      qfc.setAttribute('r', 12);
+      qfc.setAttribute('fill', '#0A0A15');
+      qfc.setAttribute('stroke', '#3A8FFF');
+      qfc.setAttribute('stroke-width', '1.5');
+      gqf.appendChild(qfc);
+      const qft = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      qft.setAttribute('text-anchor', 'middle');
+      qft.setAttribute('dominant-baseline', 'central');
+      qft.setAttribute('font-size', '10');
+      qft.textContent = FLAGS[winnerTeam] || '⚽';
+      gqf.appendChild(qft);
+      nodesG.appendChild(gqf);
+    }
+  });
+
+  // Update timestamp
+  document.getElementById('last-updated').textContent =
+    `Last updated: ${new Date().toLocaleTimeString('en-IE', { hour:'2-digit', minute:'2-digit' })}`;
+}
+
+// ─── TOOLTIP ─────────────────────────────────────────────────────────────────
+
+const tip = document.getElementById('tooltip');
+
+function showMatchTooltip(e, match, d) {
+  const flag1 = FLAGS[match.home] || '';
+  const flag2 = FLAGS[match.away] || '';
+  const n1 = NAMES[match.home] || match.home;
+  const n2 = NAMES[match.away] || match.away;
+  let html = `<div class="t-teams">${flag1} ${n1} vs ${flag2} ${n2}</div>`;
+  if (d) {
+    const hs = d.home === match.home ? d.homeScore : d.awayScore;
+    const as = d.home === match.home ? d.awayScore : d.homeScore;
+    if (d.status !== 'scheduled') {
+      html += `<div class="t-score">${hs} – ${as}</div>`;
+    }
+    if (d.status === 'live') html += `<div class="t-live">🔴 LIVE ${d.minute || ''}</div>`;
+    else if (d.status === 'final') html += `<div class="t-meta">Full Time</div>`;
+    else html += `<div class="t-meta">Upcoming</div>`;
+  } else {
+    html += `<div class="t-meta">Scheduled</div>`;
+  }
+  tip.innerHTML = html;
+  tip.classList.add('show');
+  moveTooltip(e);
+}
+
+function showTooltip(e, match, d, code, isHome) {
+  showMatchTooltip(e, match, d);
+}
+
+function moveTooltip(e) {
+  const x = e.clientX + 14;
+  const y = e.clientY + 14;
+  tip.style.left = Math.min(x, window.innerWidth - 240) + 'px';
+  tip.style.top  = Math.min(y, window.innerHeight - 120) + 'px';
+}
+
+function hideTooltip() {
+  tip.classList.remove('show');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+seedKnownData();
+render();
+fetchScores(); // First fetch
+
+// Refresh every 15 minutes
+setInterval(fetchScores, 15 * 60 * 1000);
+</script>
+</body>
+</html>
