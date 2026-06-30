@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { MATCHUPS } from '../data/matchups';
 
 const LS_KEY = 'wc2026_fdorg_key';
-const REFRESH_MS = 5 * 60 * 1000; // 5 min — free tier allows 10 req/min
+const REFRESH_MS = 5 * 60 * 1000;
 
-// Key baked in at build time (GitHub Actions secret); empty in dev builds
+const IS_PROD = import.meta.env.PROD;
+
+// In production: fetch server-generated scores.json from the same origin (no CORS).
+// In dev: proxy through Vite with the user's API key.
 const BUILT_IN_KEY = import.meta.env.VITE_FOOTBALL_KEY || '';
-
-// In production (GitHub Pages) call the API directly — football-data.org supports
-// CORS for authenticated requests. In dev use the Vite proxy to avoid localhost CORS.
-const API_URL = import.meta.env.PROD
-  ? 'https://api.football-data.org/v4/competitions/WC/matches'
+const SCORES_URL = IS_PROD
+  ? `${import.meta.env.BASE_URL}scores.json`
   : '/api/football/competitions/WC/matches';
 
 // Map football-data.org TLA and name variants → our internal FIFA codes
@@ -78,13 +78,12 @@ export function useScores() {
 
   const fetchScores = useCallback(async () => {
     const key = getApiKey();
-    if (!key) return;
+    if (!IS_PROD && !key) return; // dev requires a key; prod fetches scores.json directly
 
     setApiStatus({ type: 'loading', message: 'Fetching scores…' });
     try {
-      const res = await fetch(API_URL, {
-        headers: { 'X-Auth-Token': key },
-      });
+      const url = IS_PROD ? `${SCORES_URL}?t=${Date.now()}` : SCORES_URL;
+      const res = await fetch(url, IS_PROD ? {} : { headers: { 'X-Auth-Token': key } });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -142,10 +141,10 @@ export function useScores() {
   }, []);
 
   useEffect(() => {
-    if (getApiKey()) fetchScores();
-    const id = setInterval(() => { if (getApiKey()) fetchScores(); }, REFRESH_MS);
+    if (IS_PROD || getApiKey()) fetchScores();
+    const id = setInterval(() => { if (IS_PROD || getApiKey()) fetchScores(); }, REFRESH_MS);
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, lastUpdated, fetchScores, apiStatus, setApiStatus, getApiKey, saveApiKey, hasBuiltinKey: !!BUILT_IN_KEY };
+  return { liveData, lastUpdated, fetchScores, apiStatus, setApiStatus, getApiKey, saveApiKey, hasBuiltinKey: IS_PROD || !!BUILT_IN_KEY };
 }
