@@ -84,11 +84,11 @@ html, body {
 }
 .live-stroke { animation: liveStrokePulse 1s ease-in-out infinite; }
 
-@keyframes trophyPulse {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(201,168,76,0.7)) drop-shadow(0 0 24px rgba(201,168,76,0.3)); }
-  50%       { filter: drop-shadow(0 0 28px rgba(240,208,128,1))  drop-shadow(0 0 56px rgba(201,168,76,0.6)); }
+@keyframes trophyCirclePulse {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.55; }
 }
-.trophy-glow { animation: trophyPulse 2.4s ease-in-out infinite; }
+.trophy-glow-circle { animation: trophyCirclePulse 2.4s ease-in-out infinite; }
 
 /* ── Bracket SVG (desktop) ── */
 .bracket-wrap {

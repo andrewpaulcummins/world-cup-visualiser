@@ -344,6 +344,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          <filter id="trophyBlur" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="28" />
+          </filter>
           <clipPath id="flagClip">
             <circle r="22" />
           </clipPath>
@@ -353,8 +356,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         </defs>
 
         <g>{lines}</g>
-        <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324"
-          className="trophy-glow" />
+        <circle cx="450" cy="450" r="110" fill="#C9A84C" filter="url(#trophyBlur)" className="trophy-glow-circle" />
+        <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324" />
         <g>{nodes}</g>
       </svg>
     </div>
