@@ -352,10 +352,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           </clipPath>
         </defs>
 
-        <circle cx="450" cy="450" r="320" fill="url(#centerGlow)" />
         <g>{lines}</g>
         <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324"
-          style={{ filter: 'drop-shadow(0 0 10px rgba(201,168,76,0.7))' }} />
+          className="trophy-glow" />
         <g>{nodes}</g>
       </svg>
     </div>
