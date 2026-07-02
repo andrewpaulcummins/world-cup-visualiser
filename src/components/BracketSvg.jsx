@@ -198,7 +198,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         <g key={nodeKey} transform={`translate(${pos.x},${pos.y})`} style={{ cursor: 'pointer' }}
           onMouseEnter={e => onMatchEnter(e, match, d)}
           onMouseMove={e => onMatchMove(e)}
-          onMouseLeave={onLeave}>
+          onMouseLeave={onLeave}
+          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
           {flagUrl(code)
@@ -261,7 +262,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       <g key={`r32-${i}`} transform={`translate(${posR32.x},${posR32.y})`} style={{ cursor: 'pointer' }}
         onMouseEnter={e => r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d)}
         onMouseMove={e => onMatchMove(e)}
-        onMouseLeave={onLeave}>
+        onMouseLeave={onLeave}
+        onClick={e => { e.stopPropagation(); r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d); }}>
         {w ? (
           <>
             <circle r="18" fill="#0F0F1A" stroke="#C9A84C" strokeWidth="1.5" />
@@ -288,7 +290,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           style={{ cursor: 'pointer' }}
           onMouseEnter={e => r16NodeInfo && onRoundEnter(e, r16NodeInfo)}
           onMouseMove={e => onMatchMove(e)}
-          onMouseLeave={onLeave} />,
+          onMouseLeave={onLeave}
+          onClick={e => { e.stopPropagation(); r16NodeInfo && onRoundEnter(e, r16NodeInfo); }} />,
       );
     }
 
@@ -312,7 +315,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
   return (
     <div className="bracket-wrap">
-      <svg viewBox="0 0 900 900" className="bracket-svg" onMouseLeave={onLeave}>
+      <svg viewBox="0 0 900 900" className="bracket-svg" onMouseLeave={onLeave} onClick={onLeave}>
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#C9A84C" stopOpacity="0.35" />
