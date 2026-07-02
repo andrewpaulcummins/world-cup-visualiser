@@ -6,10 +6,12 @@ import Header from './components/Header';
 import BracketSvg from './components/BracketSvg';
 import Legend from './components/Legend';
 import LiveMatchCard from './components/LiveMatchCard';
+import CelebrationSplash from './components/CelebrationSplash';
 import Tooltip from './components/Tooltip';
 
 export default function App() {
-  const { liveData, innerRounds, schedule, lastUpdated, apiStatus } = useScores();
+  const { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, apiStatus } = useScores();
+  const [splashDismissed, setSplashDismissed] = useState(false);
   useGoalDetector(liveData);
 
   const [tooltip, setTooltip] = useState({ visible: false, type: 'match', match: null, data: null, info: null, x: 0, y: 0 });
@@ -32,6 +34,9 @@ export default function App() {
 
   return (
     <>
+      {tournamentWinner && !splashDismissed && (
+        <CelebrationSplash winner={tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
+      )}
       <Header lastUpdated={lastUpdated} apiStatus={apiStatus} />
       <BracketSvg
         matchups={MATCHUPS}

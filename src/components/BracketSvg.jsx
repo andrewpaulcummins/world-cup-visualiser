@@ -1,4 +1,6 @@
-import { flagUrl, NAMES } from '../data/matchups';
+import { flagUrl, NAMES, TEAM_COLORS } from '../data/matchups';
+
+function teamCol(code) { return TEAM_COLORS[code] || '#3A8FFF'; }
 
 const CX = 450, CY = 450;
 const R_OUTER = 412;
@@ -124,11 +126,11 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     //   unplayed     → grey       (match not yet played)
     const GREY = '#707070';
     const homePathCol = status === 'live' ? LIVE_GREEN
-                      : status === 'final' && w === match.home ? '#3A8FFF'
+                      : status === 'final' && w === match.home ? teamCol(match.home)
                       : status === 'final' && w !== match.home ? '#181822'
                       : GREY;
     const awayPathCol = status === 'live' ? LIVE_GREEN
-                      : status === 'final' && w === match.away ? '#3A8FFF'
+                      : status === 'final' && w === match.away ? teamCol(match.away)
                       : status === 'final' && w !== match.away ? '#181822'
                       : GREY;
     // Advancing path (R32→R16): always grey — the R16 match hasn't been played
@@ -193,7 +195,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       const lblAngle = Math.atan2(pos.y - CY, pos.x - CX);
       const lx = Math.cos(lblAngle) * 33;
       const ly = Math.sin(lblAngle) * 33;
-      const border = isWin ? '#3A8FFF' : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
+      const border = isWin ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
       return (
         <g key={nodeKey} transform={`translate(${pos.x},${pos.y})`} style={{ cursor: 'pointer' }}
           onMouseEnter={e => onMatchEnter(e, match, d)}

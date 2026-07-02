@@ -129,11 +129,12 @@ function buildSeedData() {
 }
 
 export function useScores() {
-  const [liveData, setLiveData]       = useState(buildSeedData);
-  const [innerRounds, setInnerRounds] = useState({ R16: {} });
-  const [schedule, setSchedule]       = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [apiStatus, setApiStatus]     = useState(null);
+  const [liveData, setLiveData]             = useState(buildSeedData);
+  const [innerRounds, setInnerRounds]       = useState({ R16: {} });
+  const [schedule, setSchedule]             = useState([]);
+  const [tournamentWinner, setTournamentWinner] = useState(null);
+  const [lastUpdated, setLastUpdated]       = useState(null);
+  const [apiStatus, setApiStatus]           = useState(null);
 
   const fetchScores = useCallback(async () => {
     setApiStatus({ type: 'loading', message: 'Fetching scores…' });
@@ -172,6 +173,12 @@ export function useScores() {
         // Build schedule entry for every non-final match
         if (status !== 'final') {
           scheduleArr.push({ home, away, utcDate, status, homeScore, awayScore, roundLabel });
+        }
+
+        // Detect tournament winner from the Final
+        if (status === 'final' && /^final$/i.test(round.trim())) {
+          const w = homeWon ? home : awayWon ? away : null;
+          if (w) setTournamentWinner(w);
         }
 
         // R16 fixtures → inner-ring tooltip data
@@ -218,5 +225,5 @@ export function useScores() {
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, innerRounds, schedule, lastUpdated, fetchScores, apiStatus, setApiStatus };
+  return { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }

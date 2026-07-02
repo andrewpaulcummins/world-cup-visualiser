@@ -33,6 +33,18 @@ export const NAMES = {
   AUS:'Australia', CHE:'Switzerland', CPV:'Cape Verde',
 };
 
+// Primary kit colours — visible on dark backgrounds
+export const TEAM_COLORS = {
+  GER:'#E0E0E0', FRA:'#1C6DC5', BRA:'#F7D116', JPN:'#4169A4',
+  NED:'#FF6200', MAR:'#C1272D', ENG:'#E0E0E0', USA:'#4169A4',
+  ESP:'#C60B1E', POR:'#009A44', ARG:'#74ACDF', COL:'#FCD116',
+  GHA:'#FCD116', AUS:'#FFB81C', CHE:'#D40000', BEL:'#EF2B2D',
+  SEN:'#00A84F', CRO:'#CC0000', CAN:'#FF2222', RSA:'#00A84F',
+  PAR:'#D52B1E', SWE:'#1C6DC5', NOR:'#EF2B2D', ECU:'#FFD100',
+  MEX:'#009A44', EGY:'#CE1126', COD:'#4169A4', CIV:'#F77F00',
+  BIH:'#4169A4', DZA:'#009A44', CPV:'#1C6DC5', AUT:'#ED2939',
+};
+
 // Order determines bracket connections: adjacent pairs (0+1, 2+3, …) meet in R16,
 // groups of 4 (0-3, 4-7, …) meet in QF, halves (0-7, 8-15) meet in SF.
 export const MATCHUPS = [
