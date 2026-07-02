@@ -1,4 +1,4 @@
-const CACHE = 'wc26-v1';
+const CACHE = 'wc26-v2';
 const PRECACHE = [
   '/world-cup-visualiser/',
   '/world-cup-visualiser/trophy.webp',
@@ -19,11 +19,13 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API calls, cache-first for assets
-  if (e.request.url.includes('workers.dev') || e.request.url.includes('football-data') || e.request.url.includes('flagcdn')) {
+  const url = e.request.url;
+  // Network-first for API calls and HTML (so deploys are always picked up)
+  if (url.includes('workers.dev') || url.includes('football-data') || url.includes('flagcdn') || url.endsWith('/') || url.endsWith('.html')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
+  // Cache-first for hashed assets (JS/CSS/images)
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       if (res.ok) {
