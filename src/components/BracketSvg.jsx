@@ -86,7 +86,23 @@ function buildR16Info(pairIdx, matchupsArr, ld, innerRounds) {
   };
 }
 
-export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter }) {
+function getTeamIdx(matchups, code) {
+  return matchups.findIndex(m => m.home === code || m.away === code);
+}
+
+export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, selectedTeam, onTeamSelect, picks }) {
+  const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
+  const dimmed  = teamIdx >= 0;
+
+  function onPath(i, level) {
+    if (!dimmed) return true;
+    if (level === 'match')  return i === teamIdx;
+    if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2);
+    if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4);
+    if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8);
+    if (level === 'center') return true;
+    return false;
+  }
   const lines = [];
   const nodes = [];
 
@@ -139,12 +155,17 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     const liveClass = status === 'live' ? 'live-stroke' : '';
 
     // ── Teams → R32 ──────────────────────────────────────────────────────────
+    const mOp  = onPath(i, 'match')  ? 1 : 0.06;
+    const r16Op = onPath(i, 'r16')   ? 1 : 0.06;
+    const qfOp  = onPath(i, 'qf')    ? 1 : 0.06;
+    const sfOp  = onPath(i, 'sf')    ? 1 : 0.06;
+
     lines.push(
-      <path key={`hl-${i}`}
+      <path key={`hl-${i}`} opacity={mOp}
         className={liveClass}
         d={arcElbow(posHome, faTeam(i * 2), R_R32, posR32, 1)}
         fill="none" stroke={homePathCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
-      <path key={`al-${i}`}
+      <path key={`al-${i}`} opacity={mOp}
         className={liveClass}
         d={arcElbow(posAway, faTeam(i * 2 + 1), R_R32, posR32, 0)}
         fill="none" stroke={awayPathCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
@@ -152,17 +173,16 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── R32 → R16 ────────────────────────────────────────────────────────────
     lines.push(
-      <path key={`r32r16-${i}`}
+      <path key={`r32r16-${i}`} opacity={r16Op}
         d={arcElbow(posR32, angle, R_R16, posR16, i % 2 === 0 ? 1 : 0)}
         fill="none" stroke={advCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
     );
 
     // ── R16 → QF (once per R16 pair) ─────────────────────────────────────────
     if (i % 2 === 0) {
-      // First pair in the QF group arcs clockwise, second counterclockwise
       const sweep = Math.floor(i / 2) % 2 === 0 ? 1 : 0;
       lines.push(
-        <path key={`r16qf-${i}`}
+        <path key={`r16qf-${i}`} opacity={qfOp}
           d={arcElbow(posR16, fa(r16Frac), R_QF, posQF, sweep)}
           fill="none" {...INNER_LINE} strokeLinejoin="round" />,
       );
@@ -170,10 +190,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── QF → SF (once per QF group) ──────────────────────────────────────────
     if (i % 4 === 0) {
-      // First QF in the SF half arcs clockwise, second counterclockwise
       const sweep = Math.floor(i / 4) % 2 === 0 ? 1 : 0;
       lines.push(
-        <path key={`qfsf-${i}`}
+        <path key={`qfsf-${i}`} opacity={sfOp}
           d={arcElbow(posQF, fa(qfFrac), R_SF, posSF, sweep)}
           fill="none" {...INNER_LINE} strokeLinejoin="round" />,
       );
@@ -183,7 +202,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     if (i % 8 === 0) {
       const ctr = polar(R_CTR, fa(sfFrac));
       lines.push(
-        <path key={`sfctr-${i}`}
+        <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
           d={`M ${posSF.x} ${posSF.y} L ${ctr.x} ${ctr.y}`}
           fill="none" {...INNER_LINE} strokeLinejoin="round" />,
       );
@@ -196,12 +215,17 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       const lx = Math.cos(lblAngle) * 33;
       const ly = Math.sin(lblAngle) * 33;
       const border = isWin ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
+      const isSelected = selectedTeam === code;
+      const nodeOp = dimmed ? (isSelected ? 1 : onPath(i, 'match') ? 0.5 : 0.06) : 1;
+      const matchKey = `${match.home}-${match.away}`;
+      const pick = picks?.[matchKey] || picks?.[`${match.away}-${match.home}`];
+      const isPick = pick === code;
       return (
-        <g key={nodeKey} transform={`translate(${pos.x},${pos.y})`} style={{ cursor: 'pointer' }}
+        <g key={nodeKey} transform={`translate(${pos.x},${pos.y})`} style={{ cursor: 'pointer' }} opacity={nodeOp}
           onMouseEnter={e => onMatchEnter(e, match, d)}
           onMouseMove={e => onMatchMove(e)}
           onMouseLeave={onLeave}
-          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); }}>
+          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); onTeamSelect?.(isSelected ? null : code); }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
           {flagUrl(code)
@@ -211,6 +235,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
             : <text textAnchor="middle" dominantBaseline="central" fontSize="10" fill={isLose ? '#444' : '#888070'}>{code}</text>
           }
           {isLose && <circle r="22" fill="rgba(0,0,0,0.35)" />}
+          {isPick && <circle r="27" fill="none" stroke="#C9A84C" strokeWidth="2" strokeDasharray="4 3" opacity="0.9" />}
           <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central"
             fontSize="8" fontFamily="Inter, sans-serif"
             fill={isWin ? '#3A8FFF' : isLose ? '#3A3A4A' : '#888070'} fontWeight={isWin ? '600' : '400'}>
@@ -289,6 +314,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       nodes.push(
         <circle key={`r16-${i}`} cx={posR16.x} cy={posR16.y} r="11"
           fill="#0D0D1A" stroke="#707070" strokeWidth="1.5"
+          opacity={onPath(i, 'r16') ? 1 : 0.06}
           style={{ cursor: 'pointer' }}
           onMouseEnter={e => r16NodeInfo && onRoundEnter(e, r16NodeInfo)}
           onMouseMove={e => onMatchMove(e)}
@@ -301,7 +327,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     if (i % 4 === 0) {
       nodes.push(
         <circle key={`qf-${i}`} cx={posQF.x} cy={posQF.y} r="11"
-          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />,
+          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" opacity={onPath(i, 'qf') ? 1 : 0.06} />,
       );
     }
 
@@ -317,7 +343,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
   return (
     <div className="bracket-wrap">
-      <svg viewBox="0 0 900 900" className="bracket-svg" onMouseLeave={onLeave} onClick={onLeave}>
+      <svg viewBox="0 0 900 900" className="bracket-svg" onMouseLeave={onLeave}
+        onClick={e => { onLeave(); onTeamSelect?.(null); }}>
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#C9A84C" stopOpacity="0.35" />

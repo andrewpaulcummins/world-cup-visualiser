@@ -67,6 +67,7 @@ function normalise(raw, isAF) {
     const goals = raw.goals;
     return {
       home, away,
+      matchId:   raw.fixture.id || null,
       round:     raw.league?.round || '',
       short,
       utcDate:   raw.fixture.date,
@@ -98,6 +99,7 @@ function normalise(raw, isAF) {
     }
     return {
       home, away,
+      matchId:   raw.id || null,
       round:     raw.stage || '',
       short,
       utcDate,
@@ -197,7 +199,7 @@ export function useScores() {
 
         console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
 
-        const entry = { home, away, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
+        const entry = { home, away, matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
         updated[`${home}-${away}`] = entry;
         updated[`${away}-${home}`] = {
           ...entry, home: away, away: home,

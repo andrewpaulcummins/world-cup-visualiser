@@ -52,7 +52,7 @@ function RoundTooltip({ info, x, y }) {
 }
 
 // ── R32 match tooltip (existing behaviour) ─────────────────────────────────────
-function MatchTooltip({ match, data, x, y }) {
+function MatchTooltip({ match, data, x, y, picks, onPick }) {
   const d    = data;
   const flag1 = FLAGS[match.home] || '';
   const flag2 = FLAGS[match.away] || '';
@@ -94,11 +94,33 @@ function MatchTooltip({ match, data, x, y }) {
         </div>
       )}
       {status === 'scheduled' && <div className="t-meta">Upcoming</div>}
+      {status === 'scheduled' && onPick && (() => {
+        const key  = `${match.home}-${match.away}`;
+        const rKey = `${match.away}-${match.home}`;
+        const pick = picks?.[key] || picks?.[rKey] || null;
+        return (
+          <div className="t-predict">
+            <div className="t-predict-label">Your pick:</div>
+            <div className="t-predict-btns">
+              <button
+                className={`t-predict-btn${pick === match.home ? ' t-predict-btn--active' : ''}`}
+                onMouseDown={e => { e.stopPropagation(); onPick(match.home, match.away, match.home); }}>
+                {flag1} {n1}
+              </button>
+              <button
+                className={`t-predict-btn${pick === match.away ? ' t-predict-btn--active' : ''}`}
+                onMouseDown={e => { e.stopPropagation(); onPick(match.home, match.away, match.away); }}>
+                {flag2} {n2}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-export default function Tooltip({ tooltip }) {
+export default function Tooltip({ tooltip, picks, onPick }) {
   if (!tooltip.visible) return null;
 
   if (tooltip.type === 'inner' && tooltip.info) {
@@ -106,5 +128,5 @@ export default function Tooltip({ tooltip }) {
   }
 
   if (!tooltip.match) return null;
-  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} />;
+  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} />;
 }

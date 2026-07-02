@@ -603,6 +603,92 @@ html, body {
   margin: 0 4px;
 }
 
+/* ── Header actions ── */
+.hdr-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.hdr-btn {
+  background: none;
+  border: 1px solid var(--node-border);
+  color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 5px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.hdr-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.hdr-picks { color: var(--gold-dim); }
+
+/* ── Goal Toast ── */
+.goal-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #111118;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 12px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 20px rgba(201,168,76,0.2);
+  cursor: pointer;
+  animation: toastSlideIn 0.35s cubic-bezier(0.22,1,0.36,1);
+  max-width: 320px;
+}
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.goal-toast-icon { font-size: 1.6rem; }
+.goal-toast-title { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; }
+.goal-toast-match { font-size: 0.82rem; color: var(--text); margin-top: 2px; }
+.goal-toast-score { font-weight: 700; color: var(--gold-light); }
+.goal-toast-minute { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; }
+
+/* ── Prediction buttons in tooltip ── */
+.t-predict { margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; }
+.t-predict-label { font-size: 0.62rem; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.t-predict-btns { display: flex; gap: 6px; }
+.t-predict-btn {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--node-border);
+  color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.t-predict-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+.t-predict-btn--active { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
+
+/* ── Countdown ── */
+.lmc-countdown {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Goal scorers ── */
+.lmc-team-info { display: flex; flex-direction: column; }
+.lmc-team-info--right { align-items: flex-end; }
+.lmc-scorers { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+.lmc-scorers--right { align-items: flex-end; }
+.lmc-scorer { font-size: 0.62rem; color: var(--text-dim); }
+
 /* ── Celebration Splash ── */
 .splash-overlay {
   position: fixed;

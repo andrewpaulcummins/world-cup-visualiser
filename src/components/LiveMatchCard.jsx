@@ -1,10 +1,12 @@
+import { useState, useEffect } from 'react';
 import { MATCHUPS, NAMES, FLAGS, flagUrl } from '../data/matchups';
+import { useCountdown } from '../hooks/useCountdown';
+
+const WORKER = 'https://wc-scores.andrewpaulcummins.workers.dev';
 
 function formatDate(utcDate) {
   if (!utcDate) return '';
-  return new Date(utcDate).toLocaleDateString('en-IE', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  });
+  return new Date(utcDate).toLocaleDateString('en-IE', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function formatTime(utcDate) {
@@ -20,9 +22,7 @@ function isToday(utcDate) {
 function TeamFlag({ code }) {
   if (!code) return <span className="lmc-flag-emoji">🏳️</span>;
   const url = flagUrl(code);
-  return url
-    ? <img src={url} alt={code} className="lmc-flag" />
-    : <span className="lmc-flag-emoji">{FLAGS[code] || ''}</span>;
+  return url ? <img src={url} alt={code} className="lmc-flag" /> : <span className="lmc-flag-emoji">{FLAGS[code] || ''}</span>;
 }
 
 function teamName(code) {
@@ -30,8 +30,32 @@ function teamName(code) {
   return NAMES[code] || code;
 }
 
-// ── Live match card ─────────────────────────────────────────────────────────
+// ── Match stats (goal scorers) via Worker proxy ──────────────────────────────
+function useMatchStats(matchId, isLive) {
+  const [goals, setGoals] = useState([]);
+
+  useEffect(() => {
+    if (!matchId || !isLive) return;
+    let cancelled = false;
+    fetch(`${WORKER}/match/${matchId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled && Array.isArray(data.goals)) setGoals(data.goals);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [matchId, isLive]);
+
+  return goals;
+}
+
+// ── Live match card ──────────────────────────────────────────────────────────
 function LiveCard({ m, d }) {
+  const goals = useMatchStats(d.matchId, true);
+
+  const homeGoals = goals.filter(g => g.team?.tla === m.home || g.team?.tla === d.home);
+  const awayGoals = goals.filter(g => g.team?.tla === m.away || g.team?.tla === d.away);
+
   return (
     <div className="lmc">
       <div className="lmc-header">
@@ -45,7 +69,16 @@ function LiveCard({ m, d }) {
       <div className="lmc-body">
         <div className="lmc-team">
           <TeamFlag code={m.home} />
-          <span className="lmc-name">{teamName(m.home)}</span>
+          <div className="lmc-team-info">
+            <span className="lmc-name">{teamName(m.home)}</span>
+            {homeGoals.length > 0 && (
+              <div className="lmc-scorers">
+                {homeGoals.map((g, i) => (
+                  <span key={i} className="lmc-scorer">⚽ {g.scorer?.name?.split(' ').pop()} {g.minute}'</span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="lmc-scorebox">
           <span className="lmc-score">{d.homeScore ?? '—'}</span>
@@ -56,7 +89,16 @@ function LiveCard({ m, d }) {
           )}
         </div>
         <div className="lmc-team lmc-team--right">
-          <span className="lmc-name">{teamName(m.away)}</span>
+          <div className="lmc-team-info lmc-team-info--right">
+            <span className="lmc-name">{teamName(m.away)}</span>
+            {awayGoals.length > 0 && (
+              <div className="lmc-scorers lmc-scorers--right">
+                {awayGoals.map((g, i) => (
+                  <span key={i} className="lmc-scorer">{g.minute}' {g.scorer?.name?.split(' ').pop()} ⚽</span>
+                ))}
+              </div>
+            )}
+          </div>
           <TeamFlag code={m.away} />
         </div>
       </div>
@@ -64,27 +106,28 @@ function LiveCard({ m, d }) {
   );
 }
 
-// ── Next upcoming match (featured card) ─────────────────────────────────────
+// ── Next upcoming match (with countdown) ────────────────────────────────────
 function NextUpCard({ match }) {
+  const countdown = useCountdown(match.utcDate);
   const today = isToday(match.utcDate);
   const dateStr = today ? `Today · ${formatTime(match.utcDate)}` : `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}`;
+
   return (
     <div className="lmc lmc--next">
       <div className="lmc-header">
         <span className="lmc-badge lmc-badge--next">NEXT UP</span>
         <span className="lmc-round">{match.roundLabel}</span>
         <span className="lmc-minute" style={{ color: 'var(--gold)' }}>{dateStr}</span>
-        <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn lmc-watch-btn--dim">
-          RTÉ ▶
-        </a>
+        <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn lmc-watch-btn--dim">RTÉ ▶</a>
       </div>
       <div className="lmc-body">
         <div className="lmc-team">
           <TeamFlag code={match.home} />
           <span className="lmc-name">{teamName(match.home)}</span>
         </div>
-        <div className="lmc-scorebox">
+        <div className="lmc-scorebox" style={{ flexDirection: 'column', gap: 2 }}>
           <span className="lmc-vs">vs</span>
+          {countdown && <span className="lmc-countdown">{countdown}</span>}
         </div>
         <div className="lmc-team lmc-team--right">
           <span className="lmc-name">{teamName(match.away)}</span>
@@ -99,15 +142,11 @@ function NextUpCard({ match }) {
 function ScheduleList({ matches }) {
   if (!matches.length) return null;
 
-  // Group by date
   const byDate = [];
   let currentDate = null;
   for (const m of matches) {
     const d = formatDate(m.utcDate) || 'Date TBC';
-    if (d !== currentDate) {
-      byDate.push({ date: d, items: [] });
-      currentDate = d;
-    }
+    if (d !== currentDate) { byDate.push({ date: d, items: [] }); currentDate = d; }
     byDate[byDate.length - 1].items.push(m);
   }
 
@@ -138,25 +177,20 @@ export default function LiveMatchCard({ liveData, schedule }) {
     .map(m => ({ m, d: liveData[`${m.home}-${m.away}`] }))
     .filter(({ d }) => d?.status === 'live');
 
-  // Skip the match already shown as live in the schedule list
   const liveKeys = new Set(liveMatches.map(({ m }) => `${m.home}-${m.away}`));
   const upcoming = (schedule || []).filter(
     m => m.status !== 'live' && !liveKeys.has(`${m.home}-${m.away}`) && !liveKeys.has(`${m.away}-${m.home}`)
   );
 
-  const nextUp      = upcoming[0] || null;
+  const nextUp       = upcoming[0] || null;
   const restUpcoming = upcoming.slice(1);
 
   if (!liveMatches.length && !nextUp && !restUpcoming.length) return null;
 
   return (
     <div className="live-section">
-      {liveMatches.map(({ m, d }) => (
-        <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} />
-      ))}
-
+      {liveMatches.map(({ m, d }) => <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} />)}
       {nextUp && <NextUpCard match={nextUp} />}
-
       <ScheduleList matches={restUpcoming} />
     </div>
   );

@@ -20,8 +20,19 @@ export default {
       );
     }
 
-    // Debug endpoint: bypass cache, return raw API response
     const url = new URL(request.url);
+
+    // Match detail endpoint: /match/:id  → goal scorers for live card
+    const matchRoute = url.pathname.match(/^\/match\/(\d+)$/);
+    if (matchRoute) {
+      const r = await fetch(`https://api.football-data.org/v4/matches/${matchRoute[1]}`, {
+        headers: { 'X-Auth-Token': env.FOOTBALL_KEY },
+      });
+      const txt = await r.text();
+      return new Response(txt, { headers: { 'Content-Type': 'application/json', ...CORS } });
+    }
+
+    // Debug endpoint: bypass cache, return raw API response
     if (url.pathname === '/debug') {
       const r = await fetch(API_URL, { headers: { 'X-Auth-Token': env.FOOTBALL_KEY } });
       const txt = await r.text();
