@@ -21,7 +21,7 @@ const TEAM_LOOKUP = {
   GHA:'GHA', AUS:'AUS', CHE:'CHE', BEL:'BEL', SEN:'SEN', CRO:'CRO',
   CAN:'CAN', RSA:'RSA', PAR:'PAR', SWE:'SWE', NOR:'NOR', ECU:'ECU',
   MEX:'MEX', EGY:'EGY', COD:'COD', CIV:'CIV', BIH:'BIH', DZA:'DZA',
-  CPV:'CPV',
+  CPV:'CPV', AUT:'AUT',
   // Alternate TLAs football-data.org sometimes uses
   SUI:'CHE', ALG:'DZA', CGO:'COD', BOS:'BIH', CVE:'CPV', SAF:'RSA',
   // Full name fallbacks
@@ -33,16 +33,22 @@ const TEAM_LOOKUP = {
   'Paraguay':'PAR', 'Sweden':'SWE', 'Norway':'NOR', 'Ecuador':'ECU',
   'Mexico':'MEX', 'Egypt':'EGY', 'DR Congo':'COD', "Côte d'Ivoire":'CIV',
   'Ivory Coast':'CIV', 'Bosnia and Herzegovina':'BIH', 'Algeria':'DZA',
-  'Cape Verde':'CPV',
+  'Cape Verde':'CPV', 'Austria':'AUT',
 };
 
 function resolveTeam(t) {
   return TEAM_LOOKUP[t.tla] || TEAM_LOOKUP[t.name] || t.tla;
 }
 
-function mapStatus(s) {
-  if (['IN_PLAY', 'PAUSED', 'HALFTIME'].includes(s)) return 'live';
-  if (s === 'FINISHED') return 'final';
+// football-data.org free tier keeps status as TIMED even during live play.
+// Fall back to kick-off time: if the match started within the last 115 min, treat as live.
+function mapStatus(s, utcDate) {
+  if (['IN_PLAY', 'PAUSED', 'HALFTIME', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(s)) return 'live';
+  if (['FINISHED', 'AWARDED'].includes(s)) return 'final';
+  if (utcDate) {
+    const elapsedMin = (Date.now() - new Date(utcDate)) / 60000;
+    if (elapsedMin >= 0 && elapsedMin < 115) return 'live';
+  }
   return 'scheduled';
 }
 
@@ -106,7 +112,7 @@ export function useScores() {
         if (!inBracket) continue;
         console.log(`[WC] ${home} v ${away} | status=${m.status} | stage=${m.stage} | ft=${JSON.stringify(m.score?.fullTime)} | winner=${m.score?.winner}`);
 
-        const status = mapStatus(m.status);
+        const status = mapStatus(m.status, m.utcDate);
         const ft = m.score?.fullTime;
         const ht = m.score?.halfTime;
         const homeScore = ft?.home ?? ht?.home ?? null;
