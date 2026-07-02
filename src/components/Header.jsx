@@ -11,7 +11,7 @@ export default function Header({ lastUpdated }) {
         <span className="live-dot" />
         <span>Last updated: {timeStr}</span>
         <span>·</span>
-        <span>Updates every 5 min</span>
+        <span>Updates every 30s</span>
       </div>
     </header>
   );

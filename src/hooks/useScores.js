@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { MATCHUPS } from '../data/matchups';
 
 const LS_KEY = 'wc2026_fdorg_key';
-const REFRESH_MS = 5 * 60 * 1000;
+const REFRESH_MS = 30 * 1000; // 30 s — Worker proxies the API, no rate-limit risk
 
 const IS_PROD = import.meta.env.PROD;
 
-// In production: fetch server-generated scores.json from the same origin (no CORS).
-// In dev: proxy through Vite with the user's API key.
 const BUILT_IN_KEY = import.meta.env.VITE_FOOTBALL_KEY || '';
+// In production: call the Cloudflare Worker (handles CORS + keeps key secret).
+// In dev: proxy through Vite with the user's API key.
 const SCORES_URL = IS_PROD
-  ? `${import.meta.env.BASE_URL}scores.json`
+  ? 'https://wc-scores.andrewpaulcummins.workers.dev'
   : '/api/football/competitions/WC/matches';
 
 // Map football-data.org TLA and name variants → our internal FIFA codes
