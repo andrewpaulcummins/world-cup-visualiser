@@ -5,16 +5,21 @@ import { useGoalDetector } from './hooks/useGoalDetector';
 import Header from './components/Header';
 import BracketSvg from './components/BracketSvg';
 import Legend from './components/Legend';
-import ApiPanel from './components/ApiPanel';
+import LiveMatchCard from './components/LiveMatchCard';
 import Tooltip from './components/Tooltip';
 
 export default function App() {
-  const { liveData, lastUpdated, fetchScores, apiStatus, setApiStatus, getApiKey, saveApiKey, hasBuiltinKey } = useScores();
+  const { liveData, innerRounds, lastUpdated, apiStatus } = useScores();
   useGoalDetector(liveData);
-  const [tooltip, setTooltip] = useState({ visible: false, match: null, data: null, x: 0, y: 0 });
+
+  const [tooltip, setTooltip] = useState({ visible: false, type: 'match', match: null, data: null, info: null, x: 0, y: 0 });
 
   const handleMatchEnter = useCallback((e, match, data) => {
-    setTooltip({ visible: true, match, data, x: e.clientX, y: e.clientY });
+    setTooltip({ visible: true, type: 'match', match, data, info: null, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleRoundEnter = useCallback((e, info) => {
+    setTooltip({ visible: true, type: 'inner', match: null, data: null, info, x: e.clientX, y: e.clientY });
   }, []);
 
   const handleMatchMove = useCallback((e) => {
@@ -27,24 +32,18 @@ export default function App() {
 
   return (
     <>
-      <Header lastUpdated={lastUpdated} />
+      <Header lastUpdated={lastUpdated} apiStatus={apiStatus} />
       <BracketSvg
         matchups={MATCHUPS}
         liveData={liveData}
+        innerRounds={innerRounds}
         onMatchEnter={handleMatchEnter}
         onMatchMove={handleMatchMove}
         onLeave={handleLeave}
+        onRoundEnter={handleRoundEnter}
       />
       <Legend />
-      {!hasBuiltinKey && (
-        <ApiPanel
-          getApiKey={getApiKey}
-          saveApiKey={saveApiKey}
-          fetchScores={fetchScores}
-          apiStatus={apiStatus}
-          setApiStatus={setApiStatus}
-        />
-      )}
+      <LiveMatchCard liveData={liveData} />
       <Tooltip tooltip={tooltip} />
     </>
   );

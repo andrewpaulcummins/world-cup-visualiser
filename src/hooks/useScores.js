@@ -1,28 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MATCHUPS } from '../data/matchups';
 
-const LS_KEY = 'wc2026_fdorg_key';
-const REFRESH_MS = 30 * 1000; // 30 s — Worker proxies the API, no rate-limit risk
+const REFRESH_MS = 30 * 1000;
+// Always call the Cloudflare Worker — it proxies api-football.com, handles auth + caching.
+const SCORES_URL = 'https://wc-scores.andrewpaulcummins.workers.dev';
 
-const IS_PROD = import.meta.env.PROD;
-
-const BUILT_IN_KEY = import.meta.env.VITE_FOOTBALL_KEY || '';
-// In production: call the Cloudflare Worker (handles CORS + keeps key secret).
-// In dev: proxy through Vite with the user's API key.
-const SCORES_URL = IS_PROD
-  ? 'https://wc-scores.andrewpaulcummins.workers.dev'
-  : '/api/football/competitions/WC/matches';
-
-// Map football-data.org TLA and name variants → our internal FIFA codes
+// Map api-football team code / full name → our internal FIFA TLA
 const TEAM_LOOKUP = {
-  // Standard TLAs (usually match)
   GER:'GER', FRA:'FRA', BRA:'BRA', JPN:'JPN', NED:'NED', MAR:'MAR',
   ENG:'ENG', USA:'USA', ESP:'ESP', POR:'POR', ARG:'ARG', COL:'COL',
   GHA:'GHA', AUS:'AUS', CHE:'CHE', BEL:'BEL', SEN:'SEN', CRO:'CRO',
   CAN:'CAN', RSA:'RSA', PAR:'PAR', SWE:'SWE', NOR:'NOR', ECU:'ECU',
   MEX:'MEX', EGY:'EGY', COD:'COD', CIV:'CIV', BIH:'BIH', DZA:'DZA',
   CPV:'CPV', AUT:'AUT',
-  // Alternate TLAs football-data.org sometimes uses
+  // Alternate codes api-football sometimes uses
   SUI:'CHE', ALG:'DZA', CGO:'COD', BOS:'BIH', CVE:'CPV', SAF:'RSA',
   // Full name fallbacks
   'Germany':'GER', 'France':'FRA', 'Brazil':'BRA', 'Japan':'JPN',
@@ -32,35 +23,20 @@ const TEAM_LOOKUP = {
   'Senegal':'SEN', 'Croatia':'CRO', 'Canada':'CAN', 'South Africa':'RSA',
   'Paraguay':'PAR', 'Sweden':'SWE', 'Norway':'NOR', 'Ecuador':'ECU',
   'Mexico':'MEX', 'Egypt':'EGY', 'DR Congo':'COD', "Côte d'Ivoire":'CIV',
-  'Ivory Coast':'CIV', 'Bosnia and Herzegovina':'BIH', 'Algeria':'DZA',
-  'Cape Verde':'CPV', 'Austria':'AUT',
+  'Ivory Coast':'CIV', 'Bosnia and Herzegovina':'BIH', 'Bosnia':'BIH',
+  'Algeria':'DZA', 'Cape Verde':'CPV', 'Austria':'AUT',
 };
 
+// api-football uses { code, name } on team objects
 function resolveTeam(t) {
-  return TEAM_LOOKUP[t.tla] || TEAM_LOOKUP[t.name] || t.tla;
+  return TEAM_LOOKUP[t.code] || TEAM_LOOKUP[t.name] || t.code;
 }
 
-// football-data.org free tier keeps status as TIMED even during live play.
-// Fall back to kick-off time: if the match started within the last 115 min, treat as live.
-function mapStatus(s, utcDate) {
-  if (['IN_PLAY', 'PAUSED', 'HALFTIME', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(s)) return 'live';
-  if (['FINISHED', 'AWARDED'].includes(s)) return 'final';
-  if (utcDate) {
-    const elapsedMin = (Date.now() - new Date(utcDate)) / 60000;
-    if (elapsedMin >= 0 && elapsedMin < 115) return 'live';
-  }
+// api-football fixture.status.short codes
+function mapStatus(short) {
+  if (['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(short)) return 'live';
+  if (['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(short))            return 'final';
   return 'scheduled';
-}
-
-// football-data.org free tier omits the `minute` field entirely.
-// Estimate from kick-off time: first half 0-45', HT break ~15 min, second half 45-90'.
-function estimateMinuteStr(utcDate, apiStatus) {
-  if (apiStatus === 'HALFTIME') return 'HT';
-  const elapsed = Math.floor((Date.now() - new Date(utcDate)) / 60000);
-  if (elapsed < 0) return null;
-  if (elapsed <= 45) return `${elapsed}'`;
-  if (elapsed <= 60) return "45+'";                          // halftime or stoppage
-  return `${Math.min(elapsed - 15, 90)}'`;                  // second half (15 min HT)
 }
 
 function buildSeedData() {
@@ -75,69 +51,81 @@ function buildSeedData() {
 }
 
 export function useScores() {
-  const [liveData, setLiveData]     = useState(buildSeedData);
+  const [liveData, setLiveData]       = useState(buildSeedData);
+  const [innerRounds, setInnerRounds] = useState({ R16: {} });
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [apiStatus, setApiStatus]   = useState(null);
-
-  const getApiKey  = () => localStorage.getItem(LS_KEY) || BUILT_IN_KEY;
-  const saveApiKey = (key) => localStorage.setItem(LS_KEY, key.trim());
+  const [apiStatus, setApiStatus]     = useState(null);
 
   const fetchScores = useCallback(async () => {
-    const key = getApiKey();
-    if (!IS_PROD && !key) return; // dev requires a key; prod fetches scores.json directly
-
     setApiStatus({ type: 'loading', message: 'Fetching scores…' });
     try {
-      const url = IS_PROD ? `${SCORES_URL}?t=${Date.now()}` : SCORES_URL;
-      const res = await fetch(url, IS_PROD ? {} : { headers: { 'X-Auth-Token': key } });
+      const res = await fetch(`${SCORES_URL}?t=${Date.now()}`);
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || `HTTP ${res.status}`);
+        throw new Error(body.error || body.message || `HTTP ${res.status}`);
       }
 
-      const { matches } = await res.json();
+      const json = await res.json();
+      const fixtures = json.response;
+      if (!Array.isArray(fixtures)) throw new Error('Unexpected API format');
 
-      // Only process matches that appear in our bracket
       const matchupSet = new Set(
         MATCHUPS.flatMap(m => [`${m.home}-${m.away}`, `${m.away}-${m.home}`])
       );
 
-      console.log('[WC API] total matches returned:', matches.length);
+      console.log('[WC API] total fixtures:', fixtures.length);
+
       const updated = buildSeedData();
-      for (const m of matches) {
-        const home = resolveTeam(m.homeTeam);
-        const away = resolveTeam(m.awayTeam);
+      const r16Map = {};
+
+      for (const f of fixtures) {
+        const home  = resolveTeam(f.teams.home);
+        const away  = resolveTeam(f.teams.away);
+        const round = f.league?.round || '';
+        const short = f.fixture.status.short;
+
+        // ── Round of 16 fixtures → inner-ring tooltip data ────────────────────
+        if (/16/i.test(round) && home && away) {
+          const status   = mapStatus(short);
+          const hs       = f.goals.home ?? null;
+          const as       = f.goals.away ?? null;
+          const winner   = f.teams.home.winner ? home : f.teams.away.winner ? away : null;
+          const e = { home, away, utcDate: f.fixture.date, status, homeScore: hs, awayScore: as, winner };
+          r16Map[`${home}-${away}`] = e;
+          r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: as, awayScore: hs };
+          continue;
+        }
+
+        // ── R32 bracket matches ───────────────────────────────────────────────
         const inBracket = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
         if (!inBracket) continue;
-        console.log(`[WC] ${home} v ${away} | status=${m.status} | stage=${m.stage} | ft=${JSON.stringify(m.score?.fullTime)} | winner=${m.score?.winner}`);
 
-        const status = mapStatus(m.status, m.utcDate);
-        const ft = m.score?.fullTime;
-        const ht = m.score?.halfTime;
-        const homeScore = ft?.home ?? ht?.home ?? null;
-        const awayScore = ft?.away ?? ht?.away ?? null;
-        const minuteStr = status === 'live'
-          ? estimateMinuteStr(m.utcDate, m.status)
-          : null;
+        const status    = mapStatus(short);
+        const elapsed   = f.fixture.status.elapsed;
+        const homeScore = f.goals.home ?? null;
+        const awayScore = f.goals.away ?? null;
+        const minuteStr = status === 'live' && elapsed ? `${elapsed}'` : null;
+        const duration  = short === 'PEN' ? 'PENALTY_SHOOTOUT'
+                        : short === 'AET' ? 'EXTRA_TIME'
+                        : 'REGULAR';
+        const penHome   = f.score?.penalty?.home ?? null;
+        const penAway   = f.score?.penalty?.away ?? null;
+        const winner    = f.teams.home.winner ? home : f.teams.away.winner ? away : null;
 
-        // Penalty / AET info
-        const duration = m.score?.duration ?? 'REGULAR';
-        const penHome  = m.score?.penalties?.home ?? null;
-        const penAway  = m.score?.penalties?.away ?? null;
-        // API-declared winner handles pens / AET correctly (score may be level at 90')
-        const apiWinner = m.score?.winner;
-        const winnerCode = apiWinner === 'HOME_TEAM' ? home
-                         : apiWinner === 'AWAY_TEAM' ? away
-                         : null;
+        console.log(`[WC] ${home} v ${away} | round=${round} | status=${short} | elapsed=${elapsed} | goals=${homeScore}-${awayScore}`);
 
-        const entry = { home, away, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner: winnerCode };
+        const entry = { home, away, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate: f.fixture.date };
         updated[`${home}-${away}`] = entry;
-        // Reversed-key entry for BracketSvg lookup — swap pen scores too
-        updated[`${away}-${home}`] = { ...entry, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
+        updated[`${away}-${home}`] = {
+          ...entry, home: away, away: home,
+          homeScore: awayScore, awayScore: homeScore,
+          penHome: penAway, penAway: penHome,
+        };
       }
 
       setLiveData(updated);
+      setInnerRounds({ R16: r16Map });
       setLastUpdated(new Date());
       setApiStatus(null);
     } catch (e) {
@@ -147,10 +135,10 @@ export function useScores() {
   }, []);
 
   useEffect(() => {
-    if (IS_PROD || getApiKey()) fetchScores();
-    const id = setInterval(() => { if (IS_PROD || getApiKey()) fetchScores(); }, REFRESH_MS);
+    fetchScores();
+    const id = setInterval(fetchScores, REFRESH_MS);
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, lastUpdated, fetchScores, apiStatus, setApiStatus, getApiKey, saveApiKey, hasBuiltinKey: IS_PROD || !!BUILT_IN_KEY };
+  return { liveData, innerRounds, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }

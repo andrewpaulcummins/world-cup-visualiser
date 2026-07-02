@@ -1,7 +1,9 @@
-export default function Header({ lastUpdated }) {
+export default function Header({ lastUpdated, apiStatus }) {
   const timeStr = lastUpdated
     ? lastUpdated.toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit' })
     : 'Loading…';
+
+  const isErr = apiStatus?.type === 'err';
 
   return (
     <header className="site-header">
@@ -12,6 +14,7 @@ export default function Header({ lastUpdated }) {
         <span>Last updated: {timeStr}</span>
         <span>·</span>
         <span>Updates every 30s</span>
+        {isErr && <span style={{ color: '#FF4444', fontSize: '0.68rem' }}>· {apiStatus.message}</span>}
       </div>
     </header>
   );

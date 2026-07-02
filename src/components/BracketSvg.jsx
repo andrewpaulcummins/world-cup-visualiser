@@ -1,4 +1,4 @@
-import { flagUrl } from '../data/matchups';
+import { flagUrl, NAMES } from '../data/matchups';
 
 const CX = 450, CY = 450;
 const R_OUTER = 412;
@@ -57,7 +57,34 @@ function faTeam(slot) {
   return ((slot + 0.5) / (N * 2)) * 2 * Math.PI - Math.PI / 2;
 }
 
-export default function BracketSvg({ matchups, liveData, onMatchEnter, onMatchMove, onLeave }) {
+// Build the R16 tooltip info for a given R16 slot (pairIdx = Math.floor(i/2))
+function buildR16Info(pairIdx, matchupsArr, ld, innerRounds) {
+  const m0 = matchupsArr[pairIdx * 2];
+  const m1 = matchupsArr[pairIdx * 2 + 1];
+  if (!m0 || !m1) return null;
+  const d0 = getMatchData(ld, m0.home, m0.away);
+  const d1 = getMatchData(ld, m1.home, m1.away);
+  const w0 = getWinner(d0);
+  const w1 = getWinner(d1);
+  const r16 = innerRounds?.R16;
+  let fix = null;
+  if (w0 && w1 && r16) fix = r16[`${w0}-${w1}`] || r16[`${w1}-${w0}`];
+  const homeLabel = w0 ? (NAMES[w0] || w0) : `W. ${m0.home}/${m0.away}`;
+  const awayLabel = w1 ? (NAMES[w1] || w1) : `W. ${m1.home}/${m1.away}`;
+  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  return {
+    stage: 'R16',
+    homeCode: w0, awayCode: w1,
+    homeLabel, awayLabel,
+    utcDate: fix?.utcDate || null,
+    status: fix?.status || 'scheduled',
+    homeScore: hs, awayScore: as,
+    winner: fix?.winner || null,
+  };
+}
+
+export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter }) {
   const lines = [];
   const nodes = [];
 
@@ -227,9 +254,12 @@ export default function BracketSvg({ matchups, liveData, onMatchEnter, onMatchMo
     }
 
     // ── R32 node: winner flag when decided, tiny dot otherwise ────────────────
+    // Once the winner is known, hovering the R32 result node shows the R16 preview.
+    const pairIdx = Math.floor(i / 2);
+    const r16Info = w ? buildR16Info(pairIdx, matchups, liveData, innerRounds) : null;
     nodes.push(
       <g key={`r32-${i}`} transform={`translate(${posR32.x},${posR32.y})`} style={{ cursor: 'pointer' }}
-        onMouseEnter={e => onMatchEnter(e, match, d)}
+        onMouseEnter={e => r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d)}
         onMouseMove={e => onMatchMove(e)}
         onMouseLeave={onLeave}>
         {w ? (
@@ -249,11 +279,16 @@ export default function BracketSvg({ matchups, liveData, onMatchEnter, onMatchMo
       </g>,
     );
 
-    // ── R16 dot ───────────────────────────────────────────────────────────────
+    // ── R16 dot (hover shows R16 matchup) ─────────────────────────────────────
     if (i % 2 === 0) {
+      const r16NodeInfo = buildR16Info(pairIdx, matchups, liveData, innerRounds);
       nodes.push(
         <circle key={`r16-${i}`} cx={posR16.x} cy={posR16.y} r="11"
-          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />,
+          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5"
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={e => r16NodeInfo && onRoundEnter(e, r16NodeInfo)}
+          onMouseMove={e => onMatchMove(e)}
+          onMouseLeave={onLeave} />,
       );
     }
 
