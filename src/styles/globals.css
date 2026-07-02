@@ -524,16 +524,84 @@ html, body {
   transition: background 0.15s;
 }
 .lmc-watch-btn:hover { background: var(--gold-light); }
+.lmc-watch-btn--dim {
+  background: transparent;
+  color: var(--gold-dim);
+  border: 1px solid var(--gold-dim);
+}
+.lmc-watch-btn--dim:hover { color: var(--gold); border-color: var(--gold); background: transparent; }
 
-.lmc-watch-link {
+/* Next-up card variant */
+.lmc--next { box-shadow: none; border-color: var(--node-border); }
+.lmc-badge--next { color: var(--gold); animation: none; }
+.lmc-vs { font-size: 0.9rem; color: var(--text-dim); padding: 0 4px; }
+
+/* ── Schedule list ── */
+.lmc-schedule {
+  background: #0F0F1A;
+  border: 1px solid var(--node-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lmc-schedule-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--node-border);
+}
+
+.lmc-schedule-group {
+  border-bottom: 1px solid var(--node-border);
+}
+.lmc-schedule-group:last-child { border-bottom: none; }
+
+.lmc-schedule-date {
   font-size: 0.65rem;
   font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--gold);
-  text-decoration: none;
-  opacity: 0.75;
-  white-space: nowrap;
+  background: rgba(201,168,76,0.07);
+  padding: 5px 16px;
 }
-.lmc-watch-link:hover { opacity: 1; }
+
+.lmc-schedule-row {
+  display: grid;
+  grid-template-columns: 46px 90px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.78rem;
+}
+
+.lmc-schedule-time {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.72rem;
+}
+
+.lmc-schedule-round {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lmc-schedule-teams {
+  color: var(--text);
+}
+
+.lmc-schedule-vs {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  margin: 0 4px;
+}
 
 /* ── Mobile tweaks ── */
 @media (max-width: 767px) {

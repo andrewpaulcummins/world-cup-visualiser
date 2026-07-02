@@ -9,7 +9,7 @@ import LiveMatchCard from './components/LiveMatchCard';
 import Tooltip from './components/Tooltip';
 
 export default function App() {
-  const { liveData, innerRounds, lastUpdated, apiStatus } = useScores();
+  const { liveData, innerRounds, schedule, lastUpdated, apiStatus } = useScores();
   useGoalDetector(liveData);
 
   const [tooltip, setTooltip] = useState({ visible: false, type: 'match', match: null, data: null, info: null, x: 0, y: 0 });
@@ -43,7 +43,7 @@ export default function App() {
         onRoundEnter={handleRoundEnter}
       />
       <Legend />
-      <LiveMatchCard liveData={liveData} />
+      <LiveMatchCard liveData={liveData} schedule={schedule} />
       <Tooltip tooltip={tooltip} />
     </>
   );

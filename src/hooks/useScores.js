@@ -25,7 +25,19 @@ const TEAM_LOOKUP = {
 };
 
 function lookup(code, name) {
-  return TEAM_LOOKUP[code] || TEAM_LOOKUP[name] || code;
+  if (!code && !name) return null;
+  return TEAM_LOOKUP[code] || TEAM_LOOKUP[name] || code || name || null;
+}
+
+function getRoundLabel(round) {
+  if (!round) return '';
+  if (/32/i.test(round))            return 'Round of 32';
+  if (/16/i.test(round))            return 'Round of 16';
+  if (/quarter/i.test(round))       return 'Quarter-Final';
+  if (/semi/i.test(round))          return 'Semi-Final';
+  if (/3rd|third|place/i.test(round)) return '3rd Place Play-off';
+  if (/final/i.test(round))         return 'Final';
+  return round;
 }
 
 // Handles status codes from both apis and the TIMED heuristic for football-data.org free tier
@@ -119,6 +131,7 @@ function buildSeedData() {
 export function useScores() {
   const [liveData, setLiveData]       = useState(buildSeedData);
   const [innerRounds, setInnerRounds] = useState({ R16: {} });
+  const [schedule, setSchedule]       = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [apiStatus, setApiStatus]     = useState(null);
 
@@ -144,17 +157,25 @@ export function useScores() {
         MATCHUPS.flatMap(m => [`${m.home}-${m.away}`, `${m.away}-${m.home}`])
       );
 
-      const updated = buildSeedData();
-      const r16Map  = {};
+      const updated    = buildSeedData();
+      const r16Map     = {};
+      const scheduleArr = [];
 
       for (const raw of rawList) {
         const f = normalise(raw, isAF);
         const { home, away, round, short, utcDate, homeScore, awayScore,
                 penHome, penAway, homeWon, awayWon, minuteStr, duration } = f;
 
+        const status      = mapStatus(short, utcDate);
+        const roundLabel  = getRoundLabel(round);
+
+        // Build schedule entry for every non-final match
+        if (status !== 'final') {
+          scheduleArr.push({ home, away, utcDate, status, homeScore, awayScore, roundLabel });
+        }
+
         // R16 fixtures → inner-ring tooltip data
         if (isR16Round(round) && home && away) {
-          const status = mapStatus(short, utcDate);
           const winner = homeWon ? home : awayWon ? away : null;
           const e = { home, away, utcDate, status, homeScore, awayScore, winner };
           r16Map[`${home}-${away}`] = e;
@@ -165,7 +186,6 @@ export function useScores() {
         const inBracket = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
         if (!inBracket) continue;
 
-        const status = mapStatus(short, utcDate);
         const winner = homeWon ? home : awayWon ? away : null;
 
         console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
@@ -179,8 +199,11 @@ export function useScores() {
         };
       }
 
+      scheduleArr.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+
       setLiveData(updated);
       setInnerRounds({ R16: r16Map });
+      setSchedule(scheduleArr);
       setLastUpdated(new Date());
       setApiStatus(null);
     } catch (e) {
@@ -195,5 +218,5 @@ export function useScores() {
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, innerRounds, lastUpdated, fetchScores, apiStatus, setApiStatus };
+  return { liveData, innerRounds, schedule, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }
