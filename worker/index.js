@@ -1,11 +1,11 @@
-const API_URL = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026';
+const API_URL = 'https://api.football-data.org/v4/competitions/WC/matches';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': '*',
 };
 
-const LIVE_STATUS = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE']);
+const LIVE_STATUS = new Set(['IN_PLAY', 'PAUSED', 'HALFTIME', 'EXTRA_TIME', 'PENALTY_SHOOTOUT']);
 
 export default {
   async fetch(request, env) {
@@ -13,15 +13,23 @@ export default {
       return new Response(null, { headers: CORS });
     }
 
-    if (!env.APIF_KEY) {
+    if (!env.FOOTBALL_KEY) {
       return new Response(
-        JSON.stringify({ error: 'APIF_KEY secret not configured in Worker' }),
+        JSON.stringify({ error: 'FOOTBALL_KEY secret not configured in Worker' }),
         { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } }
       );
     }
 
+    // Debug endpoint: bypass cache, return raw API response
+    const url = new URL(request.url);
+    if (url.pathname === '/debug') {
+      const r = await fetch(API_URL, { headers: { 'X-Auth-Token': env.FOOTBALL_KEY } });
+      const txt = await r.text();
+      return new Response(txt, { headers: { 'Content-Type': 'application/json', ...CORS } });
+    }
+
     const cache = caches.default;
-    const cacheKey = new Request('https://wc26-fixtures.internal/v1');
+    const cacheKey = new Request('https://wc26-fixtures.internal/v2');
 
     // Serve from Cloudflare edge cache if still fresh
     const cached = await cache.match(cacheKey);
@@ -32,9 +40,9 @@ export default {
       });
     }
 
-    // Cache miss — hit api-football.com
+    // Cache miss — hit football-data.org
     const upstream = await fetch(API_URL, {
-      headers: { 'x-apisports-key': env.APIF_KEY },
+      headers: { 'X-Auth-Token': env.FOOTBALL_KEY },
     });
 
     if (!upstream.ok) {
@@ -46,17 +54,16 @@ export default {
 
     const body = await upstream.text();
 
-    // Adaptive TTL: 90 s when a match is live, 15 min otherwise
-    // This keeps api-football.com calls well within the 100-req/day free quota.
+    // Adaptive TTL: 60 s when a match is live, 15 min otherwise
     let ttl = 900;
     try {
-      const { response } = JSON.parse(body);
-      if (Array.isArray(response) && response.some(f => LIVE_STATUS.has(f.fixture.status.short))) {
-        ttl = 90;
+      const { matches } = JSON.parse(body);
+      if (Array.isArray(matches) && matches.some(m => LIVE_STATUS.has(m.status))) {
+        ttl = 60;
       }
     } catch (_) { /* non-fatal */ }
 
-    // Store in Cloudflare edge cache with the chosen TTL
+    // Store in Cloudflare edge cache
     await cache.put(
       cacheKey,
       new Response(body, {
