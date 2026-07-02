@@ -11,6 +11,7 @@ import Tooltip from './components/Tooltip';
 
 export default function App() {
   const { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, apiStatus } = useScores();
+  const previewWinner = new URLSearchParams(window.location.search).get('splash');
   const [splashDismissed, setSplashDismissed] = useState(false);
   useGoalDetector(liveData);
 
@@ -34,8 +35,8 @@ export default function App() {
 
   return (
     <>
-      {tournamentWinner && !splashDismissed && (
-        <CelebrationSplash winner={tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
+      {(previewWinner || tournamentWinner) && !splashDismissed && (
+        <CelebrationSplash winner={previewWinner || tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
       )}
       <Header lastUpdated={lastUpdated} apiStatus={apiStatus} />
       <BracketSvg
