@@ -322,6 +322,24 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
             <stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05" />
             <stop offset="100%" stopColor="#C9A84C" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="trophyBody" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#8B6914" />
+            <stop offset="25%" stopColor="#F0D060" />
+            <stop offset="50%" stopColor="#FFF0A0" />
+            <stop offset="75%" stopColor="#E8C040" />
+            <stop offset="100%" stopColor="#7A5C10" />
+          </linearGradient>
+          <linearGradient id="trophyBase" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#5A4010" />
+            <stop offset="40%" stopColor="#C9A030" />
+            <stop offset="60%" stopColor="#E8C840" />
+            <stop offset="100%" stopColor="#5A4010" />
+          </linearGradient>
+          <linearGradient id="globeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#D4B030" />
+            <stop offset="50%" stopColor="#F8E878" />
+            <stop offset="100%" stopColor="#B08820" />
+          </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -338,18 +356,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         </defs>
 
         <g>{lines}</g>
-        <circle cx="450" cy="450" r="120" fill="#C9A84C" filter="url(#trophyBlur)" className="trophy-glow-circle" />
-        <foreignObject x="315" y="290" width="270" height="320">
-          <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: '100%', height: '100%', borderRadius: '8px', overflow: 'hidden' }}>
-            <iframe
-              title="FIFA World Cup Trophy"
-              src="https://sketchfab.com/models/911300f62f184bddbb19191f9ad4cabd/embed?autostart=1&ui_infos=0&ui_controls=0&ui_stop=0&preload=1"
-              frameBorder="0"
-              allow="autoplay; fullscreen; xr-spatial-tracking"
-              style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
-            />
-          </div>
-        </foreignObject>
+        <circle cx="450" cy="450" r="110" fill="#C9A84C" filter="url(#trophyBlur)" className="trophy-glow-circle" />
+        <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324" />
         <g>{nodes}</g>
       </svg>
     </div>
