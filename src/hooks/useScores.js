@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { MATCHUPS } from '../data/matchups';
 
 const REFRESH_MS = 30 * 1000;
-// Always call the Cloudflare Worker — it proxies api-football.com, handles auth + caching.
 const SCORES_URL = 'https://wc-scores.andrewpaulcummins.workers.dev';
 
-// Map api-football team code / full name → our internal FIFA TLA
+// Works for both api-football (code/name) and football-data.org (tla/name)
 const TEAM_LOOKUP = {
   GER:'GER', FRA:'FRA', BRA:'BRA', JPN:'JPN', NED:'NED', MAR:'MAR',
   ENG:'ENG', USA:'USA', ESP:'ESP', POR:'POR', ARG:'ARG', COL:'COL',
@@ -13,9 +12,7 @@ const TEAM_LOOKUP = {
   CAN:'CAN', RSA:'RSA', PAR:'PAR', SWE:'SWE', NOR:'NOR', ECU:'ECU',
   MEX:'MEX', EGY:'EGY', COD:'COD', CIV:'CIV', BIH:'BIH', DZA:'DZA',
   CPV:'CPV', AUT:'AUT',
-  // Alternate codes api-football sometimes uses
   SUI:'CHE', ALG:'DZA', CGO:'COD', BOS:'BIH', CVE:'CPV', SAF:'RSA',
-  // Full name fallbacks
   'Germany':'GER', 'France':'FRA', 'Brazil':'BRA', 'Japan':'JPN',
   'Netherlands':'NED', 'Morocco':'MAR', 'England':'ENG', 'United States':'USA',
   'Spain':'ESP', 'Portugal':'POR', 'Argentina':'ARG', 'Colombia':'COL',
@@ -27,16 +24,85 @@ const TEAM_LOOKUP = {
   'Algeria':'DZA', 'Cape Verde':'CPV', 'Austria':'AUT',
 };
 
-// api-football uses { code, name } on team objects
-function resolveTeam(t) {
-  return TEAM_LOOKUP[t.code] || TEAM_LOOKUP[t.name] || t.code;
+function lookup(code, name) {
+  return TEAM_LOOKUP[code] || TEAM_LOOKUP[name] || code;
 }
 
-// api-football fixture.status.short codes
-function mapStatus(short) {
+// Handles status codes from both apis and the TIMED heuristic for football-data.org free tier
+function mapStatus(short, utcDate) {
+  // api-football.com
   if (['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(short)) return 'live';
   if (['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(short))            return 'final';
+  // football-data.org
+  if (['IN_PLAY', 'PAUSED', 'HALFTIME', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(short)) return 'live';
+  if (['FINISHED', 'AWARDED'].includes(short))                        return 'final';
+  // football-data.org free tier: TIMED during live play — infer from kick-off
+  if (utcDate) {
+    const elapsed = (Date.now() - new Date(utcDate)) / 60000;
+    if (elapsed >= 0 && elapsed < 115) return 'live';
+  }
   return 'scheduled';
+}
+
+// Normalise a raw fixture from either API into a common shape
+function normalise(raw, isAF) {
+  if (isAF) {
+    // api-football.com format
+    const home = lookup(raw.teams.home.code, raw.teams.home.name);
+    const away = lookup(raw.teams.away.code, raw.teams.away.name);
+    const short = raw.fixture.status.short;
+    const elapsed = raw.fixture.status.elapsed;
+    const goals = raw.goals;
+    return {
+      home, away,
+      round:     raw.league?.round || '',
+      short,
+      utcDate:   raw.fixture.date,
+      homeScore: goals.home ?? null,
+      awayScore: goals.away ?? null,
+      penHome:   raw.score?.penalty?.home ?? null,
+      penAway:   raw.score?.penalty?.away ?? null,
+      homeWon:   raw.teams.home.winner === true,
+      awayWon:   raw.teams.away.winner === true,
+      minuteStr: ['1H','2H','HT','ET','BT','P','LIVE'].includes(short) && elapsed ? `${elapsed}'` : null,
+      duration:  short === 'PEN' ? 'PENALTY_SHOOTOUT' : short === 'AET' ? 'EXTRA_TIME' : 'REGULAR',
+    };
+  } else {
+    // football-data.org format
+    const home = lookup(raw.homeTeam.tla, raw.homeTeam.name);
+    const away = lookup(raw.awayTeam.tla, raw.awayTeam.name);
+    const ft   = raw.score?.fullTime;
+    const ht   = raw.score?.halfTime;
+    const apiW = raw.score?.winner;
+    const utcDate = raw.utcDate;
+    const short = raw.status;
+    const status = mapStatus(short, utcDate);
+    const elapsed = Math.floor((Date.now() - new Date(utcDate)) / 60000);
+    function estimateMin() {
+      if (short === 'HALFTIME') return 'HT';
+      if (elapsed <= 45) return `${elapsed}'`;
+      if (elapsed <= 60) return "45+'";
+      return `${Math.min(elapsed - 15, 90)}'`;
+    }
+    return {
+      home, away,
+      round:     raw.stage || '',
+      short,
+      utcDate,
+      homeScore: ft?.home ?? ht?.home ?? null,
+      awayScore: ft?.away ?? ht?.away ?? null,
+      penHome:   raw.score?.penalties?.home ?? null,
+      penAway:   raw.score?.penalties?.away ?? null,
+      homeWon:   apiW === 'HOME_TEAM',
+      awayWon:   apiW === 'AWAY_TEAM',
+      minuteStr: status === 'live' ? estimateMin() : null,
+      duration:  raw.score?.duration || 'REGULAR',
+    };
+  }
+}
+
+function isR16Round(round) {
+  return /16/i.test(round) || round === 'LAST_16';
 }
 
 function buildSeedData() {
@@ -60,62 +126,51 @@ export function useScores() {
     setApiStatus({ type: 'loading', message: 'Fetching scores…' });
     try {
       const res = await fetch(`${SCORES_URL}?t=${Date.now()}`);
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || body.message || `HTTP ${res.status}`);
       }
 
       const json = await res.json();
-      const fixtures = json.response;
-      if (!Array.isArray(fixtures)) throw new Error('Unexpected API format');
+
+      // Auto-detect which API the Worker is fronting
+      const isAF   = Array.isArray(json.response);  // api-football.com
+      const rawList = isAF ? json.response : (Array.isArray(json.matches) ? json.matches : null);
+      if (!rawList) throw new Error('Unexpected API format');
+
+      console.log(`[WC API] format=${isAF ? 'api-football' : 'football-data'} fixtures=${rawList.length}`);
 
       const matchupSet = new Set(
         MATCHUPS.flatMap(m => [`${m.home}-${m.away}`, `${m.away}-${m.home}`])
       );
 
-      console.log('[WC API] total fixtures:', fixtures.length);
-
       const updated = buildSeedData();
-      const r16Map = {};
+      const r16Map  = {};
 
-      for (const f of fixtures) {
-        const home  = resolveTeam(f.teams.home);
-        const away  = resolveTeam(f.teams.away);
-        const round = f.league?.round || '';
-        const short = f.fixture.status.short;
+      for (const raw of rawList) {
+        const f = normalise(raw, isAF);
+        const { home, away, round, short, utcDate, homeScore, awayScore,
+                penHome, penAway, homeWon, awayWon, minuteStr, duration } = f;
 
-        // ── Round of 16 fixtures → inner-ring tooltip data ────────────────────
-        if (/16/i.test(round) && home && away) {
-          const status   = mapStatus(short);
-          const hs       = f.goals.home ?? null;
-          const as       = f.goals.away ?? null;
-          const winner   = f.teams.home.winner ? home : f.teams.away.winner ? away : null;
-          const e = { home, away, utcDate: f.fixture.date, status, homeScore: hs, awayScore: as, winner };
+        // R16 fixtures → inner-ring tooltip data
+        if (isR16Round(round) && home && away) {
+          const status = mapStatus(short, utcDate);
+          const winner = homeWon ? home : awayWon ? away : null;
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
           r16Map[`${home}-${away}`] = e;
-          r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: as, awayScore: hs };
+          r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
           continue;
         }
 
-        // ── R32 bracket matches ───────────────────────────────────────────────
         const inBracket = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
         if (!inBracket) continue;
 
-        const status    = mapStatus(short);
-        const elapsed   = f.fixture.status.elapsed;
-        const homeScore = f.goals.home ?? null;
-        const awayScore = f.goals.away ?? null;
-        const minuteStr = status === 'live' && elapsed ? `${elapsed}'` : null;
-        const duration  = short === 'PEN' ? 'PENALTY_SHOOTOUT'
-                        : short === 'AET' ? 'EXTRA_TIME'
-                        : 'REGULAR';
-        const penHome   = f.score?.penalty?.home ?? null;
-        const penAway   = f.score?.penalty?.away ?? null;
-        const winner    = f.teams.home.winner ? home : f.teams.away.winner ? away : null;
+        const status = mapStatus(short, utcDate);
+        const winner = homeWon ? home : awayWon ? away : null;
 
-        console.log(`[WC] ${home} v ${away} | round=${round} | status=${short} | elapsed=${elapsed} | goals=${homeScore}-${awayScore}`);
+        console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
 
-        const entry = { home, away, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate: f.fixture.date };
+        const entry = { home, away, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
         updated[`${home}-${away}`] = entry;
         updated[`${away}-${home}`] = {
           ...entry, home: away, away: home,
