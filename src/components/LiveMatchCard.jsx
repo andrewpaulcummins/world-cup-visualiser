@@ -39,6 +39,9 @@ export default function LiveMatchCard({ liveData }) {
             <span className="lmc-badge">● LIVE</span>
             <span className="lmc-round">Round of 32</span>
             {d.minuteStr && <span className="lmc-minute">{d.minuteStr}</span>}
+            <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn">
+              Watch on RTÉ ▶
+            </a>
           </div>
           <div className="lmc-body">
             <div className="lmc-team">
@@ -69,6 +72,7 @@ export default function LiveMatchCard({ liveData }) {
               <span>{FLAGS[m.home]} {NAMES[m.home] || m.home}</span>
               <span className="lmc-upcoming-time">{formatTime(d.utcDate)}</span>
               <span>{NAMES[m.away] || m.away} {FLAGS[m.away]}</span>
+              <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-link">RTÉ ▶</a>
             </div>
           ))}
         </div>
