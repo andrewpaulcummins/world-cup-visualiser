@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { MATCHUPS } from './data/matchups';
 import { useScores } from './hooks/useScores';
+import { useGoalDetector } from './hooks/useGoalDetector';
 import Header from './components/Header';
 import BracketSvg from './components/BracketSvg';
 import Legend from './components/Legend';
@@ -9,6 +10,7 @@ import Tooltip from './components/Tooltip';
 
 export default function App() {
   const { liveData, lastUpdated, fetchScores, apiStatus, setApiStatus, getApiKey, saveApiKey, hasBuiltinKey } = useScores();
+  useGoalDetector(liveData);
   const [tooltip, setTooltip] = useState({ visible: false, match: null, data: null, x: 0, y: 0 });
 
   const handleMatchEnter = useCallback((e, match, data) => {
