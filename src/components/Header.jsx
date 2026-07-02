@@ -17,17 +17,42 @@ async function shareBracket(setCopied) {
   } catch { /* ignore */ }
 }
 
+async function toDataUri(url) {
+  try {
+    const fullUrl = url.startsWith('/') ? `${location.origin}${url}` : url;
+    const res  = await fetch(fullUrl, { mode: 'cors' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload  = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
 async function downloadBracket() {
   const svg = document.querySelector('.bracket-svg');
   if (!svg) return;
 
   const SIZE = 1800;
-  const serializer = new XMLSerializer();
-  const svgStr = serializer.serializeToString(svg);
-  // Add explicit size so canvas renders correctly
-  const sized = svgStr.replace('<svg', `<svg width="${SIZE}" height="${SIZE}"`);
-  const blob  = new Blob([sized], { type: 'image/svg+xml' });
-  const url   = URL.createObjectURL(blob);
+  let svgStr = new XMLSerializer().serializeToString(svg);
+
+  // Collect every image URL referenced in the SVG (cross-origin flags + same-origin trophy)
+  const found = new Set();
+  for (const [, u] of svgStr.matchAll(/href="(https?:\/\/[^"]+)"/g)) found.add(u);
+  for (const [, u] of svgStr.matchAll(/href="(\/[^"]+\.(webp|png|jpg|svg|gif))"/g)) found.add(u);
+
+  // Fetch each one and replace with a data URI so the canvas isn't tainted
+  await Promise.all([...found].map(async u => {
+    const data = await toDataUri(u);
+    if (data) svgStr = svgStr.split(u).join(data);
+  }));
+
+  const sized  = svgStr.replace('<svg', `<svg width="${SIZE}" height="${SIZE}"`);
+  const blob   = new Blob([sized], { type: 'image/svg+xml;charset=utf-8' });
+  const objUrl = URL.createObjectURL(blob);
 
   const canvas = Object.assign(document.createElement('canvas'), { width: SIZE, height: SIZE });
   const ctx    = canvas.getContext('2d');
@@ -36,23 +61,20 @@ async function downloadBracket() {
 
   const img = new Image();
   img.onload = () => {
-    try {
-      ctx.drawImage(img, 0, 0, SIZE, SIZE);
-      const a = Object.assign(document.createElement('a'), {
-        download: 'wc2026-bracket.png',
-        href: canvas.toDataURL('image/png'),
-      });
-      a.click();
-    } catch { /* CORS taint — fall back to SVG download */
-      const a = Object.assign(document.createElement('a'), {
-        download: 'wc2026-bracket.svg',
-        href: url,
-      });
-      a.click();
-    }
-    URL.revokeObjectURL(url);
+    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    Object.assign(document.createElement('a'), {
+      download: 'wc2026-bracket.png',
+      href: canvas.toDataURL('image/png'),
+    }).click();
+    URL.revokeObjectURL(objUrl);
   };
-  img.src = url;
+  img.onerror = () => {
+    Object.assign(document.createElement('a'), {
+      download: 'wc2026-bracket.svg',
+      href: objUrl,
+    }).click();
+  };
+  img.src = objUrl;
 }
 
 export default function Header({ lastUpdated, apiStatus, picks }) {

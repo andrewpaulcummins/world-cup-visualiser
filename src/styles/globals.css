@@ -130,6 +130,27 @@ html, body {
   border-radius: 50%;
 }
 
+.legend-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255,255,255,0.12);
+  margin: 0 4px;
+}
+
+.legend-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.legend-hint-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
 /* ── API Panel ── */
 .api-panel {
   display: flex;

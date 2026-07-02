@@ -33,6 +33,7 @@ function teamName(code) {
 // ── Match stats (goal scorers) via Worker proxy ──────────────────────────────
 function useMatchStats(matchId, isLive) {
   const [goals, setGoals] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!matchId || !isLive) return;
@@ -40,21 +41,26 @@ function useMatchStats(matchId, isLive) {
     fetch(`${WORKER}/match/${matchId}`)
       .then(r => r.json())
       .then(data => {
-        if (!cancelled && Array.isArray(data.goals)) setGoals(data.goals);
+        if (cancelled) return;
+        if (Array.isArray(data.goals)) { setGoals(data.goals); setLoaded(true); }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [matchId, isLive]);
 
-  return goals;
+  return { goals, loaded };
 }
 
 // ── Live match card ──────────────────────────────────────────────────────────
 function LiveCard({ m, d }) {
-  const goals = useMatchStats(d.matchId, true);
+  const { goals, loaded } = useMatchStats(d.matchId, true);
 
   const homeGoals = goals.filter(g => g.team?.tla === m.home || g.team?.tla === d.home);
   const awayGoals = goals.filter(g => g.team?.tla === m.away || g.team?.tla === d.away);
+
+  // Free-tier API doesn't give live running scores; derive from goal events
+  const scoreH = d.homeScore != null ? d.homeScore : (loaded ? homeGoals.length : null);
+  const scoreA = d.awayScore != null ? d.awayScore : (loaded ? awayGoals.length : null);
 
   return (
     <div className="lmc">
@@ -81,9 +87,9 @@ function LiveCard({ m, d }) {
           </div>
         </div>
         <div className="lmc-scorebox">
-          <span className="lmc-score">{d.homeScore ?? '—'}</span>
+          <span className="lmc-score">{scoreH ?? '—'}</span>
           <span className="lmc-sep">–</span>
-          <span className="lmc-score">{d.awayScore ?? '—'}</span>
+          <span className="lmc-score">{scoreA ?? '—'}</span>
           {d.duration === 'PENALTY_SHOOTOUT' && d.penHome != null && (
             <span className="lmc-pens">({d.penHome}–{d.penAway} pens)</span>
           )}
