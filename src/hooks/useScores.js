@@ -199,7 +199,7 @@ export function useScores() {
 
         console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
 
-        const entry = { home, away, matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
+        const entry = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
         updated[`${home}-${away}`] = entry;
         updated[`${away}-${home}`] = {
           ...entry, home: away, away: home,
