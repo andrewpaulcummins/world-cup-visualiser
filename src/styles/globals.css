@@ -19,10 +19,39 @@
 html, body {
   width: 100%;
   min-height: 100%;
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
+}
+
+/* ── Flag background ── */
+.flag-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.flag-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2.5s ease;
+  filter: saturate(0.45) blur(2px) brightness(0.18);
+}
+
+.flag-bg-layer--on {
+  opacity: 1;
+}
+
+.app-content {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Header ── */

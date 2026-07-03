@@ -15,6 +15,7 @@ import Tooltip from './components/Tooltip';
 import PredictModal from './components/PredictModal';
 import WelcomeModal from './components/WelcomeModal';
 import PicksScore from './components/PicksScore';
+import FlagBackground from './components/FlagBackground';
 
 export default function App() {
   const { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
@@ -83,6 +84,8 @@ export default function App() {
 
   return (
     <>
+      <FlagBackground />
+      <div className="app-content">
       <WelcomeModal />
       {(previewWinner || tournamentWinner) && !splashDismissed && (
         <CelebrationSplash winner={previewWinner || tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
@@ -133,6 +136,7 @@ export default function App() {
           onClose={handleModalClose}
         />
       )}
+      </div>
     </>
   );
 }
