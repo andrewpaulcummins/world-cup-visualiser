@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MATCHUPS, NAMES, FLAGS, flagUrl } from '../data/matchups';
 import { useCountdown } from '../hooks/useCountdown';
+import { useAfScorers } from '../hooks/useAfScorers';
 
 const WORKER = 'https://wc-scores.andrewpaulcummins.workers.dev';
 
@@ -59,10 +60,17 @@ function useMatchStats(matchId, isLive) {
 
 // ── Live match card ──────────────────────────────────────────────────────────
 function LiveCard({ m, d }) {
-  // Goals come directly from the main fixture-list response (free-tier compatible)
-  const goals = d.goals || [];
-  const homeGoals = goals.filter(g => g.team?.tla === m.home || g.team?.tla === d.home);
-  const awayGoals = goals.filter(g => g.team?.tla === m.away || g.team?.tla === d.away);
+  // Try api-football.com first (richer events); fall back to football-data.org goals
+  const afGoals = useAfScorers(m.home, m.away, d.utcDate, true);
+  const rawGoals = afGoals.length > 0 ? afGoals : (d.goals || []);
+
+  // Goals counting FOR each team (own goals flip to opposing team)
+  const homeGoals = rawGoals.filter(g =>
+    g.ownGoal ? g.team?.tla === m.away : g.team?.tla === m.home
+  );
+  const awayGoals = rawGoals.filter(g =>
+    g.ownGoal ? g.team?.tla === m.home : g.team?.tla === m.away
+  );
 
   // Prefer API score; fall back to counting goal events
   const scoreH = d.homeScore != null ? d.homeScore : (homeGoals.length || null);
@@ -86,7 +94,9 @@ function LiveCard({ m, d }) {
             {homeGoals.length > 0 && (
               <div className="lmc-scorers">
                 {homeGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">⚽ {g.scorer?.name?.split(' ').pop()} {g.minute}'</span>
+                  <span key={i} className="lmc-scorer">
+                    ⚽ {g.scorer?.name?.split(' ').pop()}{g.ownGoal ? ' (OG)' : ''} {g.minute}'
+                  </span>
                 ))}
               </div>
             )}
@@ -106,7 +116,9 @@ function LiveCard({ m, d }) {
             {awayGoals.length > 0 && (
               <div className="lmc-scorers lmc-scorers--right">
                 {awayGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">{g.minute}' {g.scorer?.name?.split(' ').pop()} ⚽</span>
+                  <span key={i} className="lmc-scorer">
+                    {g.minute}' {g.scorer?.name?.split(' ').pop()}{g.ownGoal ? ' (OG)' : ''} ⚽
+                  </span>
                 ))}
               </div>
             )}
