@@ -100,7 +100,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2);
     if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4);
     if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8);
-    if (level === 'center') return true;
+    if (level === 'center') return Math.floor(i / 8) === Math.floor(teamIdx / 8);
     return false;
   }
   const lines = [];
@@ -173,7 +173,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── R32 → R16 ────────────────────────────────────────────────────────────
     lines.push(
-      <path key={`r32r16-${i}`} opacity={r16Op}
+      <path key={`r32r16-${i}`} opacity={mOp}
         d={arcElbow(posR32, angle, R_R16, posR16, i % 2 === 0 ? 1 : 0)}
         fill="none" stroke={advCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
     );
@@ -182,7 +182,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     if (i % 2 === 0) {
       const sweep = Math.floor(i / 2) % 2 === 0 ? 1 : 0;
       lines.push(
-        <path key={`r16qf-${i}`} opacity={qfOp}
+        <path key={`r16qf-${i}`} opacity={r16Op}
           d={arcElbow(posR16, fa(r16Frac), R_QF, posQF, sweep)}
           fill="none" {...INNER_LINE} strokeLinejoin="round" />,
       );
@@ -192,7 +192,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     if (i % 4 === 0) {
       const sweep = Math.floor(i / 4) % 2 === 0 ? 1 : 0;
       lines.push(
-        <path key={`qfsf-${i}`} opacity={sfOp}
+        <path key={`qfsf-${i}`} opacity={qfOp}
           d={arcElbow(posQF, fa(qfFrac), R_SF, posSF, sweep)}
           fill="none" {...INNER_LINE} strokeLinejoin="round" />,
       );
@@ -336,7 +336,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       const sfDot = polar(R_CTR, fa(sfFrac));
       nodes.push(
         <circle key={`sf-${i}`} cx={sfDot.x} cy={sfDot.y} r="12"
-          fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8" />,
+          fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8"
+          opacity={onPath(i, 'sf') ? 1 : 0.06} />,
       );
     }
   });
