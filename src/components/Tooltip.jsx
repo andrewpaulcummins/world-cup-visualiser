@@ -17,7 +17,7 @@ function formatDateTime(utcDate) {
 }
 
 // ── Inner-round tooltip (R16 / QF / SF) ───────────────────────────────────────
-function RoundTooltip({ info, x, y, picks, onPick }) {
+function RoundTooltip({ info, x, y, picks, onPick, stayProps }) {
   const { stage, homeCode, awayCode, homeLabel, awayLabel, utcDate, status, homeScore, awayScore, winner } = info;
   const stageLabel = stage === 'R16' ? 'Round of 16' : stage === 'QF' ? 'Quarter-final' : 'Semi-final';
   const hasScore   = status !== 'scheduled' && homeScore != null && awayScore != null;
@@ -37,7 +37,7 @@ function RoundTooltip({ info, x, y, picks, onPick }) {
   }
 
   return (
-    <div className="tooltip" style={pos(x, y)}>
+    <div className="tooltip" style={pos(x, y)} {...stayProps}>
       <div className="t-meta" style={{ marginBottom: 6, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{stageLabel}</div>
       <TeamRow code={homeCode} label={homeLabel} score={homeScore} isWin={winner === homeCode} />
       <TeamRow code={awayCode} label={awayLabel} score={awayScore} isWin={winner === awayCode} />
@@ -57,12 +57,12 @@ function RoundTooltip({ info, x, y, picks, onPick }) {
             <div className="t-predict-btns">
               <button
                 className={`t-predict-btn${pick === homeCode ? ' t-predict-btn--active' : ''}`}
-                onMouseDown={e => { e.stopPropagation(); onPick(homeCode, awayCode, homeCode); }}>
+                onClick={e => { e.stopPropagation(); onPick(homeCode, awayCode, homeCode); }}>
                 {url1 ? <img src={url1} alt={homeCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[homeCode] || '')} {homeLabel}
               </button>
               <button
                 className={`t-predict-btn${pick === awayCode ? ' t-predict-btn--active' : ''}`}
-                onMouseDown={e => { e.stopPropagation(); onPick(homeCode, awayCode, awayCode); }}>
+                onClick={e => { e.stopPropagation(); onPick(homeCode, awayCode, awayCode); }}>
                 {url2 ? <img src={url2} alt={awayCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[awayCode] || '')} {awayLabel}
               </button>
             </div>
@@ -74,7 +74,7 @@ function RoundTooltip({ info, x, y, picks, onPick }) {
 }
 
 // ── R32 match tooltip (existing behaviour) ─────────────────────────────────────
-function MatchTooltip({ match, data, x, y, picks, onPick }) {
+function MatchTooltip({ match, data, x, y, picks, onPick, stayProps }) {
   const d    = data;
   const flag1 = FLAGS[match.home] || '';
   const flag2 = FLAGS[match.away] || '';
@@ -96,7 +96,7 @@ function MatchTooltip({ match, data, x, y, picks, onPick }) {
   const winner = d?.winner ?? (hasScore ? (hs > as ? match.home : as > hs ? match.away : null) : null);
 
   return (
-    <div className="tooltip" style={pos(x, y)}>
+    <div className="tooltip" style={pos(x, y)} {...stayProps}>
       <div className="t-team-row">
         <span className={`t-team-name${winner === match.home ? ' t-winner' : ''}`}>{flag1} {n1}</span>
         {hasScore && <span className={`t-team-score${winner === match.home ? ' t-winner' : ''}`}>{hsLabel}</span>}
@@ -126,12 +126,12 @@ function MatchTooltip({ match, data, x, y, picks, onPick }) {
             <div className="t-predict-btns">
               <button
                 className={`t-predict-btn${pick === match.home ? ' t-predict-btn--active' : ''}`}
-                onMouseDown={e => { e.stopPropagation(); onPick(match.home, match.away, match.home); }}>
+                onClick={e => { e.stopPropagation(); onPick(match.home, match.away, match.home); }}>
                 {flag1} {n1}
               </button>
               <button
                 className={`t-predict-btn${pick === match.away ? ' t-predict-btn--active' : ''}`}
-                onMouseDown={e => { e.stopPropagation(); onPick(match.home, match.away, match.away); }}>
+                onClick={e => { e.stopPropagation(); onPick(match.home, match.away, match.away); }}>
                 {flag2} {n2}
               </button>
             </div>
@@ -142,13 +142,15 @@ function MatchTooltip({ match, data, x, y, picks, onPick }) {
   );
 }
 
-export default function Tooltip({ tooltip, picks, onPick }) {
+export default function Tooltip({ tooltip, picks, onPick, onTooltipEnter, onTooltipLeave }) {
   if (!tooltip.visible) return null;
 
+  const stayProps = { onMouseEnter: onTooltipEnter, onMouseLeave: onTooltipLeave };
+
   if (tooltip.type === 'inner' && tooltip.info) {
-    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} />;
+    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} stayProps={stayProps} />;
   }
 
   if (!tooltip.match) return null;
-  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} />;
+  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} stayProps={stayProps} />;
 }

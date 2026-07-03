@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { MATCHUPS } from './data/matchups';
 import { useScores } from './hooks/useScores';
 import { useGoalDetector } from './hooks/useGoalDetector';
@@ -37,7 +37,20 @@ export default function App() {
     setTooltip(prev => prev.visible ? { ...prev, x: e.clientX, y: e.clientY } : prev);
   }, []);
 
+  const leaveTimer = useRef(null);
+
   const handleLeave = useCallback(() => {
+    leaveTimer.current = setTimeout(() => {
+      setTooltip(prev => ({ ...prev, visible: false }));
+    }, 180);
+  }, []);
+
+  const handleTooltipEnter = useCallback(() => {
+    clearTimeout(leaveTimer.current);
+  }, []);
+
+  const handleTooltipLeave = useCallback(() => {
+    clearTimeout(leaveTimer.current);
     setTooltip(prev => ({ ...prev, visible: false }));
   }, []);
 
@@ -66,7 +79,7 @@ export default function App() {
       />
       <Legend />
       <LiveMatchCard liveData={liveData} schedule={schedule} />
-      <Tooltip tooltip={tooltip} picks={picks} onPick={handlePick} />
+      <Tooltip tooltip={tooltip} picks={picks} onPick={handlePick} onTooltipEnter={handleTooltipEnter} onTooltipLeave={handleTooltipLeave} />
     </>
   );
 }
