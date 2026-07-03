@@ -146,6 +146,7 @@ function NextUpCard({ match }) {
 
 // ── Full upcoming list ───────────────────────────────────────────────────────
 function ScheduleList({ matches }) {
+  const [open, setOpen] = useState(false);
   if (!matches.length) return null;
 
   const byDate = [];
@@ -158,8 +159,11 @@ function ScheduleList({ matches }) {
 
   return (
     <div className="lmc-schedule">
-      <div className="lmc-schedule-title">All Upcoming Matches</div>
-      {byDate.map(group => (
+      <button className="lmc-schedule-title lmc-schedule-toggle" onClick={() => setOpen(o => !o)}>
+        All Upcoming Matches ({matches.length})
+        <span className="lmc-schedule-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && byDate.map(group => (
         <div key={group.date} className="lmc-schedule-group">
           <div className="lmc-schedule-date">{group.date}</div>
           {group.items.map((m, idx) => (

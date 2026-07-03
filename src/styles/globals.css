@@ -573,6 +573,14 @@ html, body {
   padding: 10px 16px 8px;
   border-bottom: 1px solid var(--node-border);
 }
+.lmc-schedule-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.15s;
+}
+.lmc-schedule-toggle:hover { color: var(--text); }
+.lmc-schedule-chevron { font-size: 0.9rem; transition: transform 0.2s ease; }
 
 .lmc-schedule-group {
   border-bottom: 1px solid var(--node-border);
