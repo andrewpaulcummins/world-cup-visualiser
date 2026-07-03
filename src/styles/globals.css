@@ -869,6 +869,58 @@ html, body {
 }
 .splash-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
 
+/* ── Welcome Modal ────────────────────────────────────────── */
+.wm-backdrop {
+  position: fixed; inset: 0; z-index: 700;
+  background: rgba(0,0,0,0.82);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.25s ease;
+  padding: 16px;
+}
+.wm-modal {
+  background: #13131F;
+  border: 1px solid rgba(201,168,76,0.28);
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.9), 0 0 60px rgba(201,168,76,0.07);
+}
+.wm-header { text-align: center; margin-bottom: 20px; }
+.wm-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.2rem; letter-spacing: 0.12em;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold-light), var(--gold), var(--gold-light), var(--gold-dim));
+  background-size: 300% 100%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: titleShimmer 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(201,168,76,0.25));
+}
+.wm-subtitle {
+  font-size: 0.68rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-dim); margin-top: 4px;
+}
+.wm-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+  margin-bottom: 24px;
+}
+.wm-features { list-style: none; display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+.wm-feature { display: flex; align-items: flex-start; gap: 16px; }
+.wm-icon { font-size: 1.3rem; flex-shrink: 0; width: 22px; text-align: center; margin-top: 1px; }
+.wm-feat-title { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.wm-feat-desc { font-size: 0.73rem; color: var(--text-dim); line-height: 1.55; }
+.wm-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #8B6914, #C9A84C, #F0D080, #C9A84C, #8B6914);
+  background-size: 200% 100%;
+  border: none; color: #0A0A0F;
+  font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 14px; border-radius: 10px; cursor: pointer;
+  transition: opacity 0.15s, background-position 0.4s;
+}
+.wm-btn:hover { opacity: 0.88; background-position: 100% 0; }
+
 /* ── Predict Modal ────────────────────────────────────────── */
 .pm-backdrop {
   position: fixed; inset: 0; z-index: 600;

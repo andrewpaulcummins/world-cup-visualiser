@@ -12,6 +12,7 @@ import CelebrationSplash from './components/CelebrationSplash';
 import GoalToast from './components/GoalToast';
 import Tooltip from './components/Tooltip';
 import PredictModal from './components/PredictModal';
+import WelcomeModal from './components/WelcomeModal';
 
 export default function App() {
   const { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, apiStatus } = useScores();
@@ -76,6 +77,7 @@ export default function App() {
 
   return (
     <>
+      <WelcomeModal />
       {(previewWinner || tournamentWinner) && !splashDismissed && (
         <CelebrationSplash winner={previewWinner || tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
       )}
