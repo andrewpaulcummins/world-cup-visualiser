@@ -17,7 +17,7 @@ function formatDateTime(utcDate) {
 }
 
 // ── Inner-round tooltip (R16 / QF / SF) ───────────────────────────────────────
-function RoundTooltip({ info, x, y }) {
+function RoundTooltip({ info, x, y, picks, onPick }) {
   const { stage, homeCode, awayCode, homeLabel, awayLabel, utcDate, status, homeScore, awayScore, winner } = info;
   const stageLabel = stage === 'R16' ? 'Round of 16' : stage === 'QF' ? 'Quarter-final' : 'Semi-final';
   const hasScore   = status !== 'scheduled' && homeScore != null && awayScore != null;
@@ -47,6 +47,28 @@ function RoundTooltip({ info, x, y }) {
         <div className="t-meta" style={{ marginTop: 6 }}>📅 {formatDateTime(utcDate)}</div>
       )}
       {status === 'scheduled' && !utcDate && <div className="t-meta">Date TBC</div>}
+      {status === 'scheduled' && homeCode && awayCode && onPick && (() => {
+        const pick = picks?.[`${homeCode}-${awayCode}`] || picks?.[`${awayCode}-${homeCode}`] || null;
+        const url1 = flagUrl(homeCode);
+        const url2 = flagUrl(awayCode);
+        return (
+          <div className="t-predict">
+            <div className="t-predict-label">Your pick:</div>
+            <div className="t-predict-btns">
+              <button
+                className={`t-predict-btn${pick === homeCode ? ' t-predict-btn--active' : ''}`}
+                onMouseDown={e => { e.stopPropagation(); onPick(homeCode, awayCode, homeCode); }}>
+                {url1 ? <img src={url1} alt={homeCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[homeCode] || '')} {homeLabel}
+              </button>
+              <button
+                className={`t-predict-btn${pick === awayCode ? ' t-predict-btn--active' : ''}`}
+                onMouseDown={e => { e.stopPropagation(); onPick(homeCode, awayCode, awayCode); }}>
+                {url2 ? <img src={url2} alt={awayCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[awayCode] || '')} {awayLabel}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -124,7 +146,7 @@ export default function Tooltip({ tooltip, picks, onPick }) {
   if (!tooltip.visible) return null;
 
   if (tooltip.type === 'inner' && tooltip.info) {
-    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} />;
+    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} />;
   }
 
   if (!tooltip.match) return null;
