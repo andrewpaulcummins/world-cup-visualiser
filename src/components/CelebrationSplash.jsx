@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react';
-import { NAMES, FLAGS, flagUrl, TEAM_COLORS } from '../data/matchups';
+import { NAMES, FLAGS, flagUrl } from '../data/matchups';
+import { getTheme } from '../data/teamThemes';
 
-const CONFETTI_COUNT = 220;
+const CONFETTI_COUNT = 240;
 
 function randomBetween(a, b) { return a + Math.random() * (b - a); }
 
-function makeParticle(w, h, teamColor) {
-  const palette = [teamColor, '#C9A84C', '#F0D080', '#FFFFFF', '#FFD700'];
+function makeParticle(w, h, palette) {
   return {
     x: randomBetween(0, w),
     y: randomBetween(-h, 0),
-    w: randomBetween(6, 14),
+    w: randomBetween(6, 15),
     h: randomBetween(3, 7),
     color: palette[Math.floor(Math.random() * palette.length)],
     speedX: randomBetween(-2, 2),
@@ -22,11 +22,17 @@ function makeParticle(w, h, teamColor) {
 }
 
 export default function CelebrationSplash({ winner, onDismiss }) {
+  const theme    = getTheme(winner);
+  const palette  = [...theme.bg, '#FFFFFF', theme.bg[0]]; // flag colors + white
+  const flagSrc  = flagUrl(winner);
+  const name     = NAMES[winner] || winner;
+  const emoji    = FLAGS[winner] || '';
   const canvasRef = useRef(null);
-  const teamColor = TEAM_COLORS[winner] || '#C9A84C';
-  const flagSrc   = flagUrl(winner);
-  const name      = NAMES[winner] || winner;
-  const emoji     = FLAGS[winner] || '';
+
+  // Gradient string for CHAMPIONS text and glow
+  const gradientStyle = theme.bg.length >= 2
+    ? `linear-gradient(135deg, ${theme.bg.join(', ')})`
+    : theme.bg[0];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,7 +43,7 @@ export default function CelebrationSplash({ winner, onDismiss }) {
 
     const ctx = canvas.getContext('2d');
     let particles = Array.from({ length: CONFETTI_COUNT }, () =>
-      makeParticle(canvas.width, canvas.height, teamColor)
+      makeParticle(canvas.width, canvas.height, palette)
     );
     let raf;
 
@@ -55,7 +61,7 @@ export default function CelebrationSplash({ winner, onDismiss }) {
         p.y += p.speedY;
         p.rot += p.rotSpeed;
         if (p.y > canvas.height + 20) {
-          Object.assign(p, makeParticle(canvas.width, canvas.height, teamColor));
+          Object.assign(p, makeParticle(canvas.width, canvas.height, palette));
           p.y = -20;
         }
       });
@@ -67,22 +73,33 @@ export default function CelebrationSplash({ winner, onDismiss }) {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, [teamColor]);
+  }, [winner]);
 
   return (
     <div className="splash-overlay" onClick={onDismiss}>
       <canvas ref={canvasRef} className="splash-canvas" />
       <div className="splash-content" onClick={e => e.stopPropagation()}>
-        <div className="splash-glow" style={{ background: `radial-gradient(circle, ${teamColor}55 0%, transparent 70%)` }} />
+        <div className="splash-glow" style={{
+          background: `radial-gradient(circle, ${theme.bg[0]}66 0%, ${(theme.bg[1] ?? theme.bg[0])}33 45%, transparent 70%)`,
+        }} />
         <p className="splash-pre">FIFA World Cup 2026</p>
-        <h1 className="splash-title">CHAMPIONS</h1>
+        <h1 className="splash-title" style={{
+          background: gradientStyle,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          filter: `drop-shadow(0 0 20px ${theme.bg[0]}99)`,
+        }}>CHAMPIONS</h1>
         {flagSrc
           ? <img src={flagSrc} alt={name} className="splash-flag" />
           : <span className="splash-flag-emoji">{emoji}</span>
         }
-        <h2 className="splash-team" style={{ color: teamColor }}>{name}</h2>
+        <h2 className="splash-team" style={{ color: theme.accent }}>{name}</h2>
         <p className="splash-sub">🏆 World Cup Winners 2026 🏆</p>
-        <button className="splash-btn" onClick={onDismiss}>Continue to Bracket</button>
+        <button className="splash-btn" style={{
+          borderColor: theme.accent,
+          color: theme.accent,
+        }} onClick={onDismiss}>Continue to Bracket</button>
       </div>
     </div>
   );

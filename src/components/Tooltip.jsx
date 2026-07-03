@@ -71,8 +71,8 @@ function MatchTooltip({ match, data, x, y }) {
   const pa = d?.penHome != null ? (d.home === match.home ? d.penAway : d.penHome) : null;
   const isPen = d?.duration === 'PENALTY_SHOOTOUT' && ph != null;
 
-  const hsLabel = isPen ? `${hs - ph}(${ph})` : hs;
-  const asLabel = isPen ? `${as - pa}(${pa})` : as;
+  const hsLabel = isPen ? `${hs}(${ph})` : hs;
+  const asLabel = isPen ? `${as}(${pa})` : as;
 
   const winner = d?.winner ?? (hasScore ? (hs > as ? match.home : as > hs ? match.away : null) : null);
 

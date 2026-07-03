@@ -16,11 +16,18 @@ import PredictModal from './components/PredictModal';
 import WelcomeModal from './components/WelcomeModal';
 import PicksScore from './components/PicksScore';
 import FlagBackground from './components/FlagBackground';
+import Customise from './components/Customise';
+import { useCustomise } from './hooks/useCustomise';
+import { getTheme, getDim, DEFAULT_THEME } from './data/teamThemes';
 
 export default function App() {
   const { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
   const { picks, setPick } = usePredictions();
   const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
+
+  const { settings, update: updateCustomise } = useCustomise();
+  const theme = settings.flagTeam ? getTheme(settings.flagTeam) : DEFAULT_THEME;
+  const dim = getDim(theme.accent);
 
   const [view, setView]                   = useState('bracket');
   const [splashDismissed, setSplashDismissed] = useState(false);
@@ -84,8 +91,11 @@ export default function App() {
 
   return (
     <>
-      <FlagBackground />
-      <div className="app-content">
+      <FlagBackground theme={theme} intensity={settings.intensity} />
+      <div className="app-content" style={{
+        '--gold': theme.accent, '--gold-light': theme.accent, '--gold-dim': dim,
+        '--tc1': theme.bg[0], '--tc2': theme.bg[1] ?? theme.bg[0], '--tc3': theme.bg[2] ?? theme.bg[1] ?? theme.bg[0],
+      }}>
       <WelcomeModal />
       {(previewWinner || tournamentWinner) && !splashDismissed && (
         <CelebrationSplash winner={previewWinner || tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
@@ -116,6 +126,7 @@ export default function App() {
             onTeamSelect={setSelectedTeam}
             onEliminatedClick={handleEliminatedClick}
             picks={picks}
+            glowColor={theme.bg[0]}
           />
           <Legend />
           <PicksScore picks={picks} liveData={liveData} />
@@ -137,6 +148,7 @@ export default function App() {
         />
       )}
       </div>
+      <Customise settings={settings} onUpdate={updateCustomise} theme={theme} />
     </>
   );
 }

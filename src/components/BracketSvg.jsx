@@ -131,7 +131,17 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
-export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks }) {
+// Deterministic particle ring around trophy
+const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  x: CX + Math.cos((i / 22) * Math.PI * 2) * (62 + (i % 5) * 14),
+  y: CY + Math.sin((i / 22) * Math.PI * 2) * (58 + (i % 4) * 13),
+  r: 1.1 + (i % 3) * 0.85,
+  dur: `${2.1 + (i % 5) * 0.55}s`,
+  delay: `${(i % 7) * 0.38}s`,
+  rise: 48 + (i % 4) * 22,
+}));
+
+export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks, glowColor = '#C9A84C' }) {
   const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
@@ -315,8 +325,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       const botPen = upperIsHome ? penA : penH;
 
       const isPen = d.duration === 'PENALTY_SHOOTOUT' && topPen != null;
-      const topLabel = isPen ? `${topRaw - topPen}(${topPen})` : topRaw;
-      const botLabel = isPen ? `${botRaw - botPen}(${botPen})` : botRaw;
+      const topLabel = isPen ? `${topRaw}(${topPen})` : topRaw;
+      const botLabel = isPen ? `${botRaw}(${botPen})` : botRaw;
 
       nodes.push(
         <text key={`score-${i}`} x={sPos.x} y={sPos.y}
@@ -436,9 +446,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         onClick={e => { onLeave(); onTeamSelect?.(null); }}>
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#C9A84C" stopOpacity="0.35" />
-            <stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05" />
-            <stop offset="100%" stopColor="#C9A84C" stopOpacity="0" />
+            <stop offset="0%" stopColor={glowColor} stopOpacity="0.5" />
+            <stop offset="60%" stopColor={glowColor} stopOpacity="0.08" />
+            <stop offset="100%" stopColor={glowColor} stopOpacity="0" />
           </radialGradient>
           <linearGradient id="trophyBody" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#8B6914" />
@@ -474,7 +484,13 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         </defs>
 
         <g>{lines}</g>
-        <circle cx="450" cy="450" r="110" fill="#C9A84C" filter="url(#trophyBlur)" className="trophy-glow-circle" />
+        <circle cx="450" cy="450" r="120" fill={glowColor} filter="url(#trophyBlur)" className="trophy-glow-circle" />
+        {PARTICLES.map((p, i) => (
+          <circle key={`p${i}`} cx={p.x} cy={p.y} r={p.r} fill={glowColor}
+            className="trophy-particle"
+            style={{ '--pdur': p.dur, '--pdelay': p.delay, '--prise': `${p.rise}px` }}
+          />
+        ))}
         <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324" />
         <g>{nodes}</g>
       </svg>
