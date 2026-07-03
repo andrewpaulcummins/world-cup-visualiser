@@ -6,6 +6,7 @@ import { usePredictions } from './hooks/usePredictions';
 import { useCommunityPicks } from './hooks/useCommunityPicks';
 import Header from './components/Header';
 import BracketSvg from './components/BracketSvg';
+import GroupStage from './components/GroupStage';
 import Legend from './components/Legend';
 import LiveMatchCard from './components/LiveMatchCard';
 import CelebrationSplash from './components/CelebrationSplash';
@@ -15,10 +16,11 @@ import PredictModal from './components/PredictModal';
 import WelcomeModal from './components/WelcomeModal';
 
 export default function App() {
-  const { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, apiStatus } = useScores();
+  const { liveData, innerRounds, schedule, groupStage, tournamentWinner, lastUpdated, apiStatus } = useScores();
   const { picks, setPick } = usePredictions();
   const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
 
+  const [view, setView]                   = useState('bracket');
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [goalToast, setGoalToast]             = useState(null);
   const [selectedTeam, setSelectedTeam]       = useState(null);
@@ -53,14 +55,12 @@ export default function App() {
     setTooltip(prev => ({ ...prev, visible: false }));
   }, [isTouch]);
 
-  // Open predict modal — triggered by clicking a connector dot
   const handleMatchClick = useCallback((info) => {
     setTooltip(prev => ({ ...prev, visible: false }));
     setModalInfo(info);
     fetchPicks(info.matchKey);
   }, [fetchPicks]);
 
-  // Pick in modal: update local predictions + submit to community DB
   const handleModalPick = useCallback((pickedTeam) => {
     if (!modalInfo?.matchKey) return;
     const [home, away] = modalInfo.matchKey.split('-');
@@ -70,7 +70,6 @@ export default function App() {
 
   const handleModalClose = useCallback(() => setModalInfo(null), []);
 
-  // Derive user's current pick for the open modal
   const myPick = modalInfo?.matchKey
     ? (picks?.[modalInfo.matchKey] || picks?.[`${modalInfo.awayCode}-${modalInfo.homeCode}`] || null)
     : null;
@@ -83,20 +82,33 @@ export default function App() {
       )}
       <GoalToast toast={goalToast} onDismiss={() => setGoalToast(null)} />
       <Header lastUpdated={lastUpdated} apiStatus={apiStatus} picks={picks} />
-      <BracketSvg
-        matchups={MATCHUPS}
-        liveData={liveData}
-        innerRounds={innerRounds}
-        onMatchEnter={handleMatchEnter}
-        onMatchMove={handleMatchMove}
-        onLeave={handleLeave}
-        onRoundEnter={handleRoundEnter}
-        onMatchClick={handleMatchClick}
-        selectedTeam={selectedTeam}
-        onTeamSelect={setSelectedTeam}
-        picks={picks}
-      />
-      <Legend />
+
+      <div className="view-tabs">
+        <button className={`view-tab${view === 'bracket' ? ' view-tab--active' : ''}`} onClick={() => setView('bracket')}>Bracket</button>
+        <button className={`view-tab${view === 'groups'  ? ' view-tab--active' : ''}`} onClick={() => setView('groups')}>Groups</button>
+      </div>
+
+      {view === 'bracket' && (
+        <>
+          <BracketSvg
+            matchups={MATCHUPS}
+            liveData={liveData}
+            innerRounds={innerRounds}
+            onMatchEnter={handleMatchEnter}
+            onMatchMove={handleMatchMove}
+            onLeave={handleLeave}
+            onRoundEnter={handleRoundEnter}
+            onMatchClick={handleMatchClick}
+            selectedTeam={selectedTeam}
+            onTeamSelect={setSelectedTeam}
+            picks={picks}
+          />
+          <Legend />
+        </>
+      )}
+
+      {view === 'groups' && <GroupStage groupStage={groupStage} />}
+
       <LiveMatchCard liveData={liveData} schedule={schedule} />
       <Tooltip tooltip={tooltip} />
       {modalInfo && (

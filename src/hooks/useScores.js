@@ -31,13 +31,34 @@ function lookup(code, name) {
 
 function getRoundLabel(round) {
   if (!round) return '';
-  if (/32/i.test(round))            return 'Round of 32';
-  if (/16/i.test(round))            return 'Round of 16';
-  if (/quarter/i.test(round))       return 'Quarter-Final';
-  if (/semi/i.test(round))          return 'Semi-Final';
+  if (/group/i.test(round))           return 'Group Stage';
+  if (/32/i.test(round))              return 'Round of 32';
+  if (/16/i.test(round))              return 'Round of 16';
+  if (/quarter/i.test(round))         return 'Quarter-Final';
+  if (/semi/i.test(round))            return 'Semi-Final';
   if (/3rd|third|place/i.test(round)) return '3rd Place Play-off';
-  if (/final/i.test(round))         return 'Final';
+  if (/final/i.test(round))           return 'Final';
   return round;
+}
+
+function computeStandings(matches) {
+  const teams = {};
+  for (const m of matches) {
+    if (m.home && !teams[m.home]) teams[m.home] = { code: m.home, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+    if (m.away && !teams[m.away]) teams[m.away] = { code: m.away, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+  for (const m of matches) {
+    if (m.status !== 'final' || !m.home || !m.away) continue;
+    const hs = m.homeScore ?? 0, as = m.awayScore ?? 0;
+    teams[m.home].mp++; teams[m.home].gf += hs; teams[m.home].ga += as;
+    teams[m.away].mp++; teams[m.away].gf += as; teams[m.away].ga += hs;
+    if (hs > as)      { teams[m.home].w++; teams[m.home].pts += 3; teams[m.away].l++; }
+    else if (hs < as) { teams[m.away].w++; teams[m.away].pts += 3; teams[m.home].l++; }
+    else              { teams[m.home].d++; teams[m.home].pts++;     teams[m.away].d++; teams[m.away].pts++; }
+  }
+  return Object.values(teams)
+    .map(t => ({ ...t, gd: t.gf - t.ga }))
+    .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.code.localeCompare(b.code));
 }
 
 // Handles status codes from both apis and the TIMED heuristic for football-data.org free tier
@@ -101,6 +122,7 @@ function normalise(raw, isAF) {
       home, away,
       matchId:   raw.id || null,
       round:     raw.stage || '',
+      group:     raw.group ? String(raw.group).replace(/^GROUP_/, '') : null,
       short,
       utcDate,
       homeScore: ft?.home ?? ht?.home ?? null,
@@ -134,6 +156,7 @@ export function useScores() {
   const [liveData, setLiveData]             = useState(buildSeedData);
   const [innerRounds, setInnerRounds]       = useState({ R16: {} });
   const [schedule, setSchedule]             = useState([]);
+  const [groupStage, setGroupStage]         = useState({});
   const [tournamentWinner, setTournamentWinner] = useState(null);
   const [lastUpdated, setLastUpdated]       = useState(null);
   const [apiStatus, setApiStatus]           = useState(null);
@@ -163,10 +186,11 @@ export function useScores() {
       const updated    = buildSeedData();
       const r16Map     = {};
       const scheduleArr = [];
+      const groupData  = {};
 
       for (const raw of rawList) {
         const f = normalise(raw, isAF);
-        const { home, away, round, short, utcDate, homeScore, awayScore,
+        const { home, away, round, group, short, utcDate, homeScore, awayScore,
                 penHome, penAway, homeWon, awayWon, minuteStr, duration } = f;
 
         const status      = mapStatus(short, utcDate);
@@ -181,6 +205,13 @@ export function useScores() {
         if (status === 'final' && /^final$/i.test(round.trim())) {
           const w = homeWon ? home : awayWon ? away : null;
           if (w) setTournamentWinner(w);
+        }
+
+        // Group stage matches → standings data
+        if (round === 'GROUP_STAGE' && group && home && away) {
+          if (!groupData[group]) groupData[group] = { matches: [] };
+          groupData[group].matches.push({ home, away, homeScore, awayScore, status, utcDate });
+          continue;
         }
 
         // R16 fixtures → inner-ring tooltip data
@@ -210,9 +241,19 @@ export function useScores() {
 
       scheduleArr.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
 
+      const groupStageResult = {};
+      for (const [letter, g] of Object.entries(groupData)) {
+        groupStageResult[letter] = {
+          name: `Group ${letter}`,
+          matches: [...g.matches].sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate)),
+          standings: computeStandings(g.matches),
+        };
+      }
+
       setLiveData(updated);
       setInnerRounds({ R16: r16Map });
       setSchedule(scheduleArr);
+      setGroupStage(groupStageResult);
       setLastUpdated(new Date());
       setApiStatus(null);
     } catch (e) {
@@ -227,5 +268,5 @@ export function useScores() {
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
+  return { liveData, innerRounds, schedule, groupStage, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }
