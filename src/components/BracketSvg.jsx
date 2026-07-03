@@ -267,7 +267,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           onMouseEnter={e => onMatchEnter(e, match, d)}
           onMouseMove={e => onMatchMove(e)}
           onMouseLeave={onLeave}
-          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); onTeamSelect?.(isSelected ? null : code); }}>
+          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); if (!isLose) onTeamSelect?.(isSelected ? null : code); }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
           {flagUrl(code)
