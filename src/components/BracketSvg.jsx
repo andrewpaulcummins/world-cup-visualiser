@@ -1,4 +1,5 @@
 import { flagUrl, NAMES, TEAM_COLORS } from '../data/matchups';
+import { usePinchZoom } from '../hooks/usePinchZoom';
 
 function teamCol(code) { return TEAM_COLORS[code] || '#3A8FFF'; }
 
@@ -59,6 +60,10 @@ function faTeam(slot) {
   return ((slot + 0.5) / (N * 2)) * 2 * Math.PI - Math.PI / 2;
 }
 
+function getMatchKey(info) {
+  return info?.homeCode && info?.awayCode ? `${info.homeCode}-${info.awayCode}` : null;
+}
+
 // Build the R16 tooltip info for a given R16 slot (pairIdx = Math.floor(i/2))
 function buildR16Info(pairIdx, matchupsArr, ld, innerRounds) {
   const m0 = matchupsArr[pairIdx * 2];
@@ -86,11 +91,48 @@ function buildR16Info(pairIdx, matchupsArr, ld, innerRounds) {
   };
 }
 
+// QF: two R16 winners feed into one QF slot (i%4===0)
+function buildQFInfo(i, matchupsArr, ld, innerRounds) {
+  const r0 = buildR16Info(Math.floor(i / 2),     matchupsArr, ld, innerRounds);
+  const r1 = buildR16Info(Math.floor(i / 2) + 1, matchupsArr, ld, innerRounds);
+  const w0 = r0?.winner || null;
+  const w1 = r1?.winner || null;
+  const qfMap = innerRounds?.QF;
+  let fix = null;
+  if (w0 && w1 && qfMap) fix = qfMap[`${w0}-${w1}`] || qfMap[`${w1}-${w0}`];
+  const homeLabel = w0 ? (NAMES[w0] || w0) : 'TBD';
+  const awayLabel = w1 ? (NAMES[w1] || w1) : 'TBD';
+  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  return { stage: 'QF', homeCode: w0, awayCode: w1, homeLabel, awayLabel,
+           utcDate: fix?.utcDate || null, status: fix?.status || 'scheduled',
+           homeScore: hs, awayScore: as, winner: fix?.winner || null };
+}
+
+// SF: two QF winners feed into one SF slot (i%8===0)
+function buildSFInfo(i, matchupsArr, ld, innerRounds) {
+  const q0 = buildQFInfo(i,     matchupsArr, ld, innerRounds);
+  const q1 = buildQFInfo(i + 4, matchupsArr, ld, innerRounds);
+  const w0 = q0?.winner || null;
+  const w1 = q1?.winner || null;
+  const sfMap = innerRounds?.SF;
+  let fix = null;
+  if (w0 && w1 && sfMap) fix = sfMap[`${w0}-${w1}`] || sfMap[`${w1}-${w0}`];
+  const homeLabel = w0 ? (NAMES[w0] || w0) : 'TBD';
+  const awayLabel = w1 ? (NAMES[w1] || w1) : 'TBD';
+  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  return { stage: 'SF', homeCode: w0, awayCode: w1, homeLabel, awayLabel,
+           utcDate: fix?.utcDate || null, status: fix?.status || 'scheduled',
+           homeScore: hs, awayScore: as, winner: fix?.winner || null };
+}
+
 function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
 export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, picks }) {
+  const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
 
@@ -342,26 +384,50 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── QF dot ────────────────────────────────────────────────────────────────
     if (i % 4 === 0) {
+      const qfInfo = buildQFInfo(i, matchups, liveData, innerRounds);
       nodes.push(
-        <circle key={`qf-${i}`} cx={posQF.x} cy={posQF.y} r="11"
-          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" opacity={onPath(i, 'qf') ? 1 : 0.06} />,
+        <g key={`qf-${i}`} transform={`translate(${posQF.x},${posQF.y})`}
+          style={{ cursor: 'pointer' }} opacity={onPath(i, 'qf') ? 1 : 0.06}
+          onMouseEnter={e => qfInfo && onRoundEnter(e, qfInfo)}
+          onMouseMove={e => onMatchMove(e)}
+          onMouseLeave={onLeave}
+          onClick={e => {
+            e.stopPropagation();
+            if (!qfInfo) return;
+            onMatchClick?.({ matchKey: getMatchKey(qfInfo), ...qfInfo });
+          }}>
+          <circle r="11" fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />
+        </g>,
       );
     }
 
     // ── SF dot (at inner end of line, adjacent to trophy) ────────────────────
     if (i % 8 === 0) {
       const sfDot = polar(R_CTR, fa(sfFrac));
+      const sfInfo = buildSFInfo(i, matchups, liveData, innerRounds);
       nodes.push(
-        <circle key={`sf-${i}`} cx={sfDot.x} cy={sfDot.y} r="12"
-          fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8"
-          opacity={onPath(i, 'sf') ? 1 : 0.06} />,
+        <g key={`sf-${i}`} transform={`translate(${sfDot.x},${sfDot.y})`}
+          style={{ cursor: 'pointer' }} opacity={onPath(i, 'sf') ? 1 : 0.06}
+          onMouseEnter={e => sfInfo && onRoundEnter(e, sfInfo)}
+          onMouseMove={e => onMatchMove(e)}
+          onMouseLeave={onLeave}
+          onClick={e => {
+            e.stopPropagation();
+            if (!sfInfo) return;
+            onMatchClick?.({ matchKey: getMatchKey(sfInfo), ...sfInfo });
+          }}>
+          <circle r="12" fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8" />
+        </g>,
       );
     }
   });
 
   return (
-    <div className="bracket-wrap">
-      <svg viewBox="0 0 900 900" className="bracket-svg" onMouseLeave={onLeave}
+    <div className="bracket-wrap" {...pinchHandlers}>
+      {scale > 1 && (
+        <button className="bracket-zoom-reset" onClick={resetZoom}>Reset zoom</button>
+      )}
+      <svg viewBox="0 0 900 900" className="bracket-svg" style={pinchStyle} onMouseLeave={onLeave}
         onClick={e => { onLeave(); onTeamSelect?.(null); }}>
         <defs>
           <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">

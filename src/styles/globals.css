@@ -1113,6 +1113,71 @@ html, body {
 .pm-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
 .pm-bar-pct { font-size: 0.7rem; color: #666; width: 32px; flex-shrink: 0; }
 
+/* ── Final match card ── */
+.lmc--final {
+  border: 1px solid var(--gold);
+  background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(10,10,15,0) 60%);
+  position: relative;
+  overflow: hidden;
+}
+.lmc--final::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.06) 50%, transparent 100%);
+  pointer-events: none;
+}
+.lmc--live-final { border-color: #00E676; }
+.lmc-round--final { color: var(--gold); font-weight: 600; letter-spacing: 0.04em; }
+.lmc-name--final  { font-size: 0.95rem; font-weight: 600; }
+.lmc-score--final { font-size: 2rem; font-weight: 700; }
+.lmc-badge--done  { background: rgba(76,175,80,0.2); color: #4CAF50; border: 1px solid #4CAF50; }
+.lmc-winner-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ── Picks accuracy score ── */
+.picks-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px auto 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.picks-score-label { opacity: 0.7; }
+.picks-score-value { color: var(--text); font-weight: 600; }
+.picks-score-pct {
+  background: rgba(201,168,76,0.15);
+  color: var(--gold);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-weight: 600;
+}
+
+/* ── Bracket pinch-zoom reset button ── */
+.bracket-zoom-reset {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(201,168,76,0.15);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bracket-zoom-reset:hover { background: rgba(201,168,76,0.25); }
+
 /* ── Mobile tweaks ── */
 @media (max-width: 767px) {
   .bracket-wrap {

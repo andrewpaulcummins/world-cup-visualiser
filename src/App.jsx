@@ -14,9 +14,10 @@ import GoalToast from './components/GoalToast';
 import Tooltip from './components/Tooltip';
 import PredictModal from './components/PredictModal';
 import WelcomeModal from './components/WelcomeModal';
+import PicksScore from './components/PicksScore';
 
 export default function App() {
-  const { liveData, innerRounds, schedule, groupStage, tournamentWinner, lastUpdated, apiStatus } = useScores();
+  const { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
   const { picks, setPick } = usePredictions();
   const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
 
@@ -104,12 +105,13 @@ export default function App() {
             picks={picks}
           />
           <Legend />
+          <PicksScore picks={picks} liveData={liveData} />
         </>
       )}
 
       {view === 'groups' && <GroupStage groupStage={groupStage} />}
 
-      <LiveMatchCard liveData={liveData} schedule={schedule} />
+      <LiveMatchCard liveData={liveData} schedule={schedule} finalMatch={finalMatch} />
       <Tooltip tooltip={tooltip} />
       {modalInfo && (
         <PredictModal

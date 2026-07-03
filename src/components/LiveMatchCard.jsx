@@ -187,8 +187,83 @@ function ScheduleList({ matches }) {
   );
 }
 
+// ── The Final card ───────────────────────────────────────────────────────────
+function FinalCard({ match }) {
+  const isLive = match.status === 'live';
+  const isFinal = match.status === 'final';
+  const { goals, loaded } = useMatchStats(match.matchId, isLive);
+  const countdown = useCountdown(match.utcDate);
+
+  const homeGoals = goals.filter(g => g.team?.tla === match.home);
+  const awayGoals = goals.filter(g => g.team?.tla === match.away);
+  const scoreH = match.homeScore != null ? match.homeScore : (loaded ? homeGoals.length : null);
+  const scoreA = match.awayScore != null ? match.awayScore : (loaded ? awayGoals.length : null);
+  const dateStr = match.utcDate ? `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}` : '';
+
+  return (
+    <div className={`lmc lmc--final${isLive ? ' lmc--live-final' : ''}`}>
+      <div className="lmc-header">
+        {isLive  && <span className="lmc-badge">● LIVE</span>}
+        {isFinal && <span className="lmc-badge lmc-badge--done">FT</span>}
+        {!isLive && !isFinal && <span className="lmc-badge lmc-badge--next">THE FINAL</span>}
+        <span className="lmc-round lmc-round--final">World Cup Final</span>
+        {isLive && match.minuteStr && <span className="lmc-minute">{match.minuteStr}</span>}
+        {!isLive && !isFinal && dateStr && <span className="lmc-minute" style={{ color: 'var(--gold)' }}>{dateStr}</span>}
+      </div>
+      <div className="lmc-body">
+        <div className="lmc-team">
+          <TeamFlag code={match.home} />
+          <div className="lmc-team-info">
+            <span className="lmc-name lmc-name--final">{teamName(match.home)}</span>
+            {homeGoals.length > 0 && (
+              <div className="lmc-scorers">
+                {homeGoals.map((g, i) => (
+                  <span key={i} className="lmc-scorer">⚽ {g.scorer?.name?.split(' ').pop()} {g.minute}'</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="lmc-scorebox" style={{ flexDirection: 'column', gap: 4 }}>
+          {(isLive || isFinal) ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="lmc-score lmc-score--final">{scoreH ?? '-'}</span>
+              <span className="lmc-sep">-</span>
+              <span className="lmc-score lmc-score--final">{scoreA ?? '-'}</span>
+            </div>
+          ) : (
+            <>
+              <span className="lmc-vs">vs</span>
+              {countdown && <span className="lmc-countdown">{countdown}</span>}
+            </>
+          )}
+          {isFinal && match.winner && (
+            <span className="lmc-winner-label">World Champion</span>
+          )}
+          {match.penHome != null && (
+            <span style={{ fontSize: '0.7rem', color: '#aaa' }}>({match.penHome}–{match.penAway} pens)</span>
+          )}
+        </div>
+        <div className="lmc-team lmc-team--right">
+          <div className="lmc-team-info lmc-team-info--right">
+            <span className="lmc-name lmc-name--final">{teamName(match.away)}</span>
+            {awayGoals.length > 0 && (
+              <div className="lmc-scorers lmc-scorers--right">
+                {awayGoals.map((g, i) => (
+                  <span key={i} className="lmc-scorer">{g.minute}' {g.scorer?.name?.split(' ').pop()} ⚽</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <TeamFlag code={match.away} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ──────────────────────────────────────────────────────────────
-export default function LiveMatchCard({ liveData, schedule }) {
+export default function LiveMatchCard({ liveData, schedule, finalMatch }) {
   const liveMatches = MATCHUPS
     .map(m => ({ m, d: liveData[`${m.home}-${m.away}`] }))
     .filter(({ d }) => d?.status === 'live');
@@ -201,10 +276,12 @@ export default function LiveMatchCard({ liveData, schedule }) {
   const nextUp       = upcoming[0] || null;
   const restUpcoming = upcoming.slice(1);
 
-  if (!liveMatches.length && !nextUp && !restUpcoming.length) return null;
+  const hasFinal = finalMatch && (finalMatch.home || finalMatch.away);
+  if (!liveMatches.length && !nextUp && !restUpcoming.length && !hasFinal) return null;
 
   return (
     <div className="live-section">
+      {hasFinal && <FinalCard match={finalMatch} />}
       {liveMatches.map(({ m, d }) => <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} />)}
       {nextUp && <NextUpCard match={nextUp} />}
       <ScheduleList matches={restUpcoming} />

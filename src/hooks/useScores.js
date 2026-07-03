@@ -12,6 +12,18 @@ const TEAM_LOOKUP = {
   CAN:'CAN', RSA:'RSA', PAR:'PAR', SWE:'SWE', NOR:'NOR', ECU:'ECU',
   MEX:'MEX', EGY:'EGY', COD:'COD', CIV:'CIV', BIH:'BIH', DZA:'DZA',
   CPV:'CPV', AUT:'AUT',
+  URU:'URU', KOR:'KOR', IRN:'IRN', KSA:'KSA', SRB:'SRB', ROU:'ROU',
+  DEN:'DEN', TUR:'TUR', UKR:'UKR', POL:'POL', HUN:'HUN', SVK:'SVK',
+  SVN:'SVN', VEN:'VEN', PAN:'PAN', CRC:'CRC', HON:'HON', NZL:'NZL',
+  NGA:'NGA', CMR:'CMR', IRQ:'IRQ', UZB:'UZB', JOR:'JOR', MLI:'MLI',
+  SLV:'SLV', JAM:'JAM', TTO:'TTO', ZAM:'ZAM', BFA:'BFA', TAN:'TAN',
+  CZE:'CZE', GRE:'GRE', WAL:'WAL', WLS:'WAL', ISR:'ISR', ALB:'ALB',
+  MKD:'MKD', ISL:'ISL', FIN:'FIN', IRL:'IRL', SCO:'SCO', TUN:'TUN',
+  ZIM:'ZIM', KEN:'KEN', UGA:'UGA', ANG:'ANG', MOZ:'MOZ', GUI:'GUI',
+  ETH:'ETH', QAT:'QAT', ARE:'ARE', OMN:'OMN', BHR:'BHR', KUW:'KUW',
+  VIE:'VIE', THA:'THA', IDN:'IDN', PHL:'PHL', IND:'IND', BOL:'BOL',
+  PER:'PER', CHI:'CHI', GUA:'GUA', NIC:'NIC', CUB:'CUB', HAI:'HAI',
+  TRI:'TTO', DOM:'DOM',
   SUI:'CHE', ALG:'DZA', CGO:'COD', BOS:'BIH', CVE:'CPV', SAF:'RSA',
   'Germany':'GER', 'France':'FRA', 'Brazil':'BRA', 'Japan':'JPN',
   'Netherlands':'NED', 'Morocco':'MAR', 'England':'ENG', 'United States':'USA',
@@ -22,6 +34,25 @@ const TEAM_LOOKUP = {
   'Mexico':'MEX', 'Egypt':'EGY', 'DR Congo':'COD', "Côte d'Ivoire":'CIV',
   'Ivory Coast':'CIV', 'Bosnia and Herzegovina':'BIH', 'Bosnia':'BIH',
   'Algeria':'DZA', 'Cape Verde':'CPV', 'Austria':'AUT',
+  'Uruguay':'URU', 'South Korea':'KOR', 'Korea Republic':'KOR',
+  'Iran':'IRN', 'Saudi Arabia':'KSA', 'Serbia':'SRB', 'Romania':'ROU',
+  'Denmark':'DEN', 'Turkey':'TUR', 'Ukraine':'UKR', 'Poland':'POL',
+  'Hungary':'HUN', 'Slovakia':'SVK', 'Slovenia':'SVN', 'Venezuela':'VEN',
+  'Panama':'PAN', 'Costa Rica':'CRC', 'Honduras':'HON', 'New Zealand':'NZL',
+  'Nigeria':'NGA', 'Cameroon':'CMR', 'Iraq':'IRQ', 'Uzbekistan':'UZB',
+  'Jordan':'JOR', 'Mali':'MLI', 'El Salvador':'SLV', 'Jamaica':'JAM',
+  'Trinidad and Tobago':'TTO', 'Zambia':'ZAM', 'Burkina Faso':'BFA',
+  'Tanzania':'TAN', 'Czechia':'CZE', 'Czech Republic':'CZE', 'Greece':'GRE',
+  'Wales':'WAL', 'Israel':'ISR', 'Albania':'ALB', 'North Macedonia':'MKD',
+  'Iceland':'ISL', 'Finland':'FIN', 'Republic of Ireland':'IRL', 'Ireland':'IRL',
+  'Scotland':'SCO', 'Tunisia':'TUN', 'Zimbabwe':'ZIM', 'Kenya':'KEN',
+  'Uganda':'UGA', 'Angola':'ANG', 'Mozambique':'MOZ', 'Guinea':'GUI',
+  'Ethiopia':'ETH', 'Qatar':'QAT', 'United Arab Emirates':'ARE', 'UAE':'ARE',
+  'Oman':'OMN', 'Bahrain':'BHR', 'Kuwait':'KUW', 'Vietnam':'VIE',
+  'Thailand':'THA', 'Indonesia':'IDN', 'Philippines':'PHL', 'India':'IND',
+  'Bolivia':'BOL', 'Peru':'PER', 'Chile':'CHI', 'Guatemala':'GUA',
+  'Nicaragua':'NIC', 'Cuba':'CUB', 'Haiti':'HAI',
+  'Trinidad & Tobago':'TTO', 'Dominican Republic':'DOM',
 };
 
 function lookup(code, name) {
@@ -137,9 +168,10 @@ function normalise(raw, isAF) {
   }
 }
 
-function isR16Round(round) {
-  return /16/i.test(round) || round === 'LAST_16';
-}
+function isR16Round(round) { return /16/i.test(round) || round === 'LAST_16'; }
+function isQFRound(round)  { return /quarter/i.test(round) || round === 'QUARTER_FINALS'; }
+function isSFRound(round)  { return /semi/i.test(round) || round === 'SEMI_FINALS'; }
+function isFinalRound(round) { return /^final$/i.test((round || '').trim()) || round === 'FINAL'; }
 
 function buildSeedData() {
   const data = {};
@@ -157,6 +189,7 @@ export function useScores() {
   const [innerRounds, setInnerRounds]       = useState({ R16: {} });
   const [schedule, setSchedule]             = useState([]);
   const [groupStage, setGroupStage]         = useState({});
+  const [finalMatch, setFinalMatch]         = useState(null);
   const [tournamentWinner, setTournamentWinner] = useState(null);
   const [lastUpdated, setLastUpdated]       = useState(null);
   const [apiStatus, setApiStatus]           = useState(null);
@@ -185,8 +218,11 @@ export function useScores() {
 
       const updated    = buildSeedData();
       const r16Map     = {};
+      const qfMap      = {};
+      const sfMap      = {};
       const scheduleArr = [];
       const groupData  = {};
+      let   finalMatchData = null;
 
       for (const raw of rawList) {
         const f = normalise(raw, isAF);
@@ -201,16 +237,36 @@ export function useScores() {
           scheduleArr.push({ home, away, utcDate, status, homeScore, awayScore, roundLabel });
         }
 
-        // Detect tournament winner from the Final
-        if (status === 'final' && /^final$/i.test(round.trim())) {
-          const w = homeWon ? home : awayWon ? away : null;
-          if (w) setTournamentWinner(w);
-        }
-
         // Group stage matches → standings data
         if (round === 'GROUP_STAGE' && group && home && away) {
           if (!groupData[group]) groupData[group] = { matches: [] };
           groupData[group].matches.push({ home, away, homeScore, awayScore, status, utcDate });
+          continue;
+        }
+
+        // QF fixtures
+        if (isQFRound(round) && home && away) {
+          const winner = homeWon ? home : awayWon ? away : null;
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
+          qfMap[`${home}-${away}`] = e;
+          qfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
+          continue;
+        }
+
+        // SF fixtures
+        if (isSFRound(round) && home && away) {
+          const winner = homeWon ? home : awayWon ? away : null;
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
+          sfMap[`${home}-${away}`] = e;
+          sfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
+          continue;
+        }
+
+        // Final fixture
+        if (isFinalRound(round) && home && away) {
+          const winner = homeWon ? home : awayWon ? away : null;
+          if (winner) setTournamentWinner(winner);
+          finalMatchData = { home, away, matchId: f.matchId, utcDate, status, homeScore, awayScore, penHome, penAway, winner, minuteStr, duration };
           continue;
         }
 
@@ -251,9 +307,10 @@ export function useScores() {
       }
 
       setLiveData(updated);
-      setInnerRounds({ R16: r16Map });
+      setInnerRounds({ R16: r16Map, QF: qfMap, SF: sfMap });
       setSchedule(scheduleArr);
       setGroupStage(groupStageResult);
+      setFinalMatch(finalMatchData);
       setLastUpdated(new Date());
       setApiStatus(null);
     } catch (e) {
@@ -268,5 +325,5 @@ export function useScores() {
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, innerRounds, schedule, groupStage, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
+  return { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }
