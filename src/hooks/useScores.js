@@ -244,6 +244,7 @@ export function useScores() {
           groupData[group].matches.push({ home, away, homeScore, awayScore, status, utcDate });
           // Also update liveData for bracket matches so the live card shows scores + scorers
           const inBracketGS = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
+          console.log(`[WC GS] ${home} v ${away} | status=${status} | ${homeScore}-${awayScore} | inBracket=${inBracketGS} | goals:`, f.goals);
           if (inBracketGS) {
             const winner = homeWon ? home : awayWon ? away : null;
             const e = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate, goals: f.goals || [] };
@@ -293,7 +294,7 @@ export function useScores() {
 
         const winner = homeWon ? home : awayWon ? away : null;
 
-        console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
+        console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'} | goals:`, f.goals);
 
         const entry = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate, goals: f.goals || [] };
         updated[`${home}-${away}`] = entry;
