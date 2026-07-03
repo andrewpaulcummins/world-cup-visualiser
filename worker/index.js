@@ -123,7 +123,7 @@ export default {
 
       const afH = { 'x-apisports-key': env.APIFOOTBALL_KEY };
 
-      // Step 1: get day's WC fixtures — cache 1 hour (fixture IDs don't change)
+      // Step 1: get day's WC fixtures — cache 24 hrs (fixture IDs never change once scheduled)
       const fixCacheKey = new Request(`https://af-internal/fixtures-${date}`);
       let fixData;
       const cachedFix = await cache.match(fixCacheKey);
@@ -132,9 +132,11 @@ export default {
       } else {
         const r = await fetch(`${AF_HOST}/fixtures?date=${date}&league=1&season=2026`, { headers: afH });
         fixData = await r.json();
-        await cache.put(fixCacheKey, new Response(JSON.stringify(fixData), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=3600' },
-        }));
+        if ((fixData.response || []).length > 0) {
+          await cache.put(fixCacheKey, new Response(JSON.stringify(fixData), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=86400' },
+          }));
+        }
       }
 
       // Find the fixture matching our home/away team codes
@@ -148,7 +150,7 @@ export default {
       const fid = fix.fixture.id;
       const homeId = fix.teams.home.id;
 
-      // Step 2: get events — cache 60 seconds
+      // Step 2: get events — cache 5 min (free tier: 100 calls/day, so ~1 per 14 min max)
       const evCacheKey = new Request(`https://af-internal/events-${fid}`);
       let evData;
       const cachedEv = await cache.match(evCacheKey);
@@ -158,7 +160,7 @@ export default {
         const r = await fetch(`${AF_HOST}/fixtures/events?fixture=${fid}`, { headers: afH });
         evData = await r.json();
         await cache.put(evCacheKey, new Response(JSON.stringify(evData), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=60' },
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=300' },
         }));
       }
 

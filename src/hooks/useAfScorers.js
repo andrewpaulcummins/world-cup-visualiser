@@ -21,7 +21,7 @@ export function useAfScorers(home, away, utcDate, isLive) {
     }
 
     fetchGoals();
-    const id = setInterval(fetchGoals, 90_000); // 90s keeps well within 100 calls/day free tier
+    const id = setInterval(fetchGoals, 5 * 60_000); // 5 min — matches worker cache TTL
     return () => { cancelled = true; clearInterval(id); };
   }, [home, away, utcDate, isLive]);
 
