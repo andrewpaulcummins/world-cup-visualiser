@@ -217,7 +217,7 @@ export function useScores() {
       setApiStatus(null);
     } catch (e) {
       console.warn('Score fetch failed:', e);
-      setApiStatus({ type: 'err', message: `Fetch failed — ${e.message}` });
+      setApiStatus({ type: 'err', message: `Fetch failed: ${e.message}` });
     }
   }, []);
 

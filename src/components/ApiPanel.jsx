@@ -43,7 +43,7 @@ export default function ApiPanel({ getApiKey, saveApiKey, fetchScores, apiStatus
             </a>{' '}
             to fetch live World Cup scores.
             <br />
-            Saved only in your browser — never sent anywhere except api.football-data.org.
+            Saved only in your browser, never sent anywhere except api.football-data.org.
           </p>
           <div className="api-row">
             <input

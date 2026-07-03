@@ -71,17 +71,17 @@ export default function PredictModal({ info, communityData, loading, myPick, onP
               ? 'Loading community picks…'
               : total > 0
               ? `${total.toLocaleString()} ${total === 1 ? 'pick' : 'picks'} so far`
-              : 'No picks yet — be the first!'}
+              : 'No picks yet. Be the first!'}
           </div>
           {!loading && total > 0 && (
             <div className="pm-bars">
               <div className="pm-bar-row">
-                <span className="pm-bar-label">{homeCode || '—'}</span>
+                <span className="pm-bar-label">{homeCode || '-'}</span>
                 <PctBar pct={homePct} color="#3A8FFF" />
                 <span className="pm-bar-pct">{homePct}%</span>
               </div>
               <div className="pm-bar-row">
-                <span className="pm-bar-label">{awayCode || '—'}</span>
+                <span className="pm-bar-label">{awayCode || '-'}</span>
                 <PctBar pct={awayPct} color="#C9A84C" />
                 <span className="pm-bar-pct">{awayPct}%</span>
               </div>

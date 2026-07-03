@@ -87,9 +87,9 @@ function LiveCard({ m, d }) {
           </div>
         </div>
         <div className="lmc-scorebox">
-          <span className="lmc-score">{scoreH ?? '—'}</span>
-          <span className="lmc-sep">–</span>
-          <span className="lmc-score">{scoreA ?? '—'}</span>
+          <span className="lmc-score">{scoreH ?? '-'}</span>
+          <span className="lmc-sep">-</span>
+          <span className="lmc-score">{scoreA ?? '-'}</span>
           {d.duration === 'PENALTY_SHOOTOUT' && d.penHome != null && (
             <span className="lmc-pens">({d.penHome}–{d.penAway} pens)</span>
           )}
@@ -164,7 +164,7 @@ function ScheduleList({ matches }) {
           <div className="lmc-schedule-date">{group.date}</div>
           {group.items.map((m, idx) => (
             <div key={idx} className="lmc-schedule-row">
-              <span className="lmc-schedule-time">{formatTime(m.utcDate) || '—'}</span>
+              <span className="lmc-schedule-time">{formatTime(m.utcDate) || '-'}</span>
               <span className="lmc-schedule-round">{m.roundLabel}</span>
               <span className="lmc-schedule-teams">
                 {teamName(m.home)} <span className="lmc-schedule-vs">vs</span> {teamName(m.away)}

@@ -16,10 +16,10 @@ export default function Legend() {
       ))}
       <div className="legend-divider" />
       <div className="legend-hint">
-        <span className="legend-hint-icon">◎</span> Click team — trace path to Final
+        <span className="legend-hint-icon">◎</span> Click team to trace path to Final
       </div>
       <div className="legend-hint">
-        <span className="legend-hint-icon" style={{ color: '#C9A84C' }}>◌</span> Click connector — predict & see community picks
+        <span className="legend-hint-icon" style={{ color: '#C9A84C' }}>◌</span> Click connector to predict and see community picks
       </div>
     </div>
   );
