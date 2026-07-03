@@ -38,14 +38,20 @@ function useMatchStats(matchId, isLive) {
   useEffect(() => {
     if (!matchId || !isLive) return;
     let cancelled = false;
-    fetch(`${WORKER}/match/${matchId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled) return;
-        if (Array.isArray(data.goals)) { setGoals(data.goals); setLoaded(true); }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+
+    function fetchGoals() {
+      fetch(`${WORKER}/match/${matchId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          if (Array.isArray(data.goals)) { setGoals(data.goals); setLoaded(true); }
+        })
+        .catch(() => {});
+    }
+
+    fetchGoals();
+    const interval = setInterval(fetchGoals, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [matchId, isLive]);
 
   return { goals, loaded };
