@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0A0A0F"/>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#F0D080"/>
+      <stop offset="50%"  stop-color="#C9A84C"/>
+      <stop offset="100%" stop-color="#7A6030"/>
+    </linearGradient>
+  </defs>
+  <!-- Cup body -->
+  <path d="M10 6 h12 l-2 10 q-4 5 -8 0 Z" fill="url(#g)"/>
+  <!-- Handles -->
+  <path d="M10 8 Q6 8 6 12 Q6 15 10 14" fill="none" stroke="url(#g)" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M22 8 Q26 8 26 12 Q26 15 22 14" fill="none" stroke="url(#g)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Stem -->
+  <rect x="14" y="16" width="4" height="5" fill="url(#g)" rx="0.5"/>
+  <!-- Base -->
+  <rect x="10" y="21" width="12" height="2.5" fill="url(#g)" rx="1"/>
+  <!-- Shine -->
+  <path d="M13 8 Q14 7 15 9" fill="none" stroke="#F5E090" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+</svg>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bg-glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%"   stop-color="#C9A84C" stop-opacity="0.28"/>
+      <stop offset="55%"  stop-color="#C9A84C" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#5A4010"/>
+      <stop offset="20%"  stop-color="#C9A84C"/>
+      <stop offset="50%"  stop-color="#F5E090"/>
+      <stop offset="80%"  stop-color="#C9A84C"/>
+      <stop offset="100%" stop-color="#5A4010"/>
+    </linearGradient>
+    <linearGradient id="year-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#7A6030"/>
+      <stop offset="30%"  stop-color="#F0D080"/>
+      <stop offset="55%"  stop-color="#FFFFFF"/>
+      <stop offset="80%"  stop-color="#F0D080"/>
+      <stop offset="100%" stop-color="#7A6030"/>
+    </linearGradient>
+    <filter id="blur-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="text-glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0A0A0F"/>
+
+  <!-- Central glow -->
+  <ellipse cx="600" cy="315" rx="480" ry="300" fill="url(#bg-glow)"/>
+
+  <!-- Warm inner glow behind "2026" -->
+  <ellipse cx="600" cy="330" rx="300" ry="180" fill="#C9A84C" opacity="0.07" filter="url(#blur-glow)"/>
+
+  <!-- Bracket rings -->
+  <circle cx="600" cy="315" r="255" fill="none" stroke="#C9A84C" stroke-width="1"   stroke-opacity="0.18"/>
+  <circle cx="600" cy="315" r="295" fill="none" stroke="#C9A84C" stroke-width="0.6" stroke-opacity="0.10"/>
+  <circle cx="600" cy="315" r="335" fill="none" stroke="#C9A84C" stroke-width="0.4" stroke-opacity="0.07"/>
+
+  <!-- Node dots on inner ring at cardinal points -->
+  <circle cx="600" cy="60"  r="5" fill="#C9A84C" opacity="0.5"/>
+  <circle cx="855" cy="315" r="5" fill="#C9A84C" opacity="0.5"/>
+  <circle cx="600" cy="570" r="5" fill="#C9A84C" opacity="0.5"/>
+  <circle cx="345" cy="315" r="5" fill="#C9A84C" opacity="0.5"/>
+  <!-- Diagonal nodes -->
+  <circle cx="780" cy="135" r="3.5" fill="#C9A84C" opacity="0.3"/>
+  <circle cx="780" cy="495" r="3.5" fill="#C9A84C" opacity="0.3"/>
+  <circle cx="420" cy="135" r="3.5" fill="#C9A84C" opacity="0.3"/>
+  <circle cx="420" cy="495" r="3.5" fill="#C9A84C" opacity="0.3"/>
+
+  <!-- Top gold rule -->
+  <line x1="80" y1="108" x2="1120" y2="108" stroke="url(#gold)" stroke-width="1" stroke-opacity="0.7"/>
+
+  <!-- WORLD CUP eyebrow -->
+  <text x="600" y="98" text-anchor="middle"
+    font-family="Impact, 'Arial Black', Arial, sans-serif"
+    font-size="46" letter-spacing="30" fill="url(#gold)">WORLD CUP</text>
+
+  <!-- 2026 large -->
+  <text x="600" y="400" text-anchor="middle"
+    font-family="Impact, 'Arial Black', Arial, sans-serif"
+    font-size="260" letter-spacing="6"
+    fill="url(#year-grad)" filter="url(#text-glow)">2026</text>
+
+  <!-- KNOCKOUT BRACKET -->
+  <text x="600" y="480" text-anchor="middle"
+    font-family="Impact, 'Arial Black', Arial, sans-serif"
+    font-size="30" letter-spacing="20" fill="#6A5A30">KNOCKOUT BRACKET</text>
+
+  <!-- Bottom gold rule -->
+  <line x1="80" y1="522" x2="1120" y2="522" stroke="url(#gold)" stroke-width="1" stroke-opacity="0.7"/>
+
+  <!-- URL -->
+  <text x="600" y="560" text-anchor="middle"
+    font-family="Arial, sans-serif"
+    font-size="17" letter-spacing="2" fill="#3A3020">andrewpaulcummins.github.io/world-cup-visualiser</text>
+
+  <!-- Trophy line art hint -->
+  <text x="600" y="620" text-anchor="middle" font-size="28" fill="#C9A84C" opacity="0.3">🏆</text>
+</svg>
