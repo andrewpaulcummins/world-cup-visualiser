@@ -164,6 +164,7 @@ function normalise(raw, isAF) {
       awayWon:   apiW === 'AWAY_TEAM',
       minuteStr: status === 'live' ? estimateMin() : null,
       duration:  raw.score?.duration || 'REGULAR',
+      goals:     Array.isArray(raw.goals) ? raw.goals : [],
     };
   }
 }
@@ -241,6 +242,14 @@ export function useScores() {
         if (round === 'GROUP_STAGE' && group && home && away) {
           if (!groupData[group]) groupData[group] = { matches: [] };
           groupData[group].matches.push({ home, away, homeScore, awayScore, status, utcDate });
+          // Also update liveData for bracket matches so the live card shows scores + scorers
+          const inBracketGS = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
+          if (inBracketGS) {
+            const winner = homeWon ? home : awayWon ? away : null;
+            const e = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate, goals: f.goals || [] };
+            updated[`${home}-${away}`] = e;
+            updated[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
+          }
           continue;
         }
 
@@ -286,7 +295,7 @@ export function useScores() {
 
         console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'}`);
 
-        const entry = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate };
+        const entry = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate, goals: f.goals || [] };
         updated[`${home}-${away}`] = entry;
         updated[`${away}-${home}`] = {
           ...entry, home: away, away: home,

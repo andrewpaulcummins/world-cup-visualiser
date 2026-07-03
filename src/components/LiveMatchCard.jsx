@@ -59,14 +59,14 @@ function useMatchStats(matchId, isLive) {
 
 // ── Live match card ──────────────────────────────────────────────────────────
 function LiveCard({ m, d }) {
-  const { goals, loaded } = useMatchStats(d.matchId, true);
-
+  // Goals come directly from the main fixture-list response (free-tier compatible)
+  const goals = d.goals || [];
   const homeGoals = goals.filter(g => g.team?.tla === m.home || g.team?.tla === d.home);
   const awayGoals = goals.filter(g => g.team?.tla === m.away || g.team?.tla === d.away);
 
-  // Free-tier API doesn't give live running scores; derive from goal events
-  const scoreH = d.homeScore != null ? d.homeScore : (loaded ? homeGoals.length : null);
-  const scoreA = d.awayScore != null ? d.awayScore : (loaded ? awayGoals.length : null);
+  // Prefer API score; fall back to counting goal events
+  const scoreH = d.homeScore != null ? d.homeScore : (homeGoals.length || null);
+  const scoreA = d.awayScore != null ? d.awayScore : (awayGoals.length || null);
 
   return (
     <div className="lmc">
@@ -191,13 +191,13 @@ function ScheduleList({ matches }) {
 function FinalCard({ match }) {
   const isLive = match.status === 'live';
   const isFinal = match.status === 'final';
-  const { goals, loaded } = useMatchStats(match.matchId, isLive);
   const countdown = useCountdown(match.utcDate);
 
+  const goals = match.goals || [];
   const homeGoals = goals.filter(g => g.team?.tla === match.home);
   const awayGoals = goals.filter(g => g.team?.tla === match.away);
-  const scoreH = match.homeScore != null ? match.homeScore : (loaded ? homeGoals.length : null);
-  const scoreA = match.awayScore != null ? match.awayScore : (loaded ? awayGoals.length : null);
+  const scoreH = match.homeScore != null ? match.homeScore : (homeGoals.length || null);
+  const scoreA = match.awayScore != null ? match.awayScore : (awayGoals.length || null);
   const dateStr = match.utcDate ? `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}` : '';
 
   return (
