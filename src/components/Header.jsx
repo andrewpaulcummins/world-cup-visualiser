@@ -5,7 +5,7 @@ async function shareBracket(setCopied) {
   const text = 'Follow the FIFA World Cup 2026 knockout bracket live!';
 
   if (navigator.share) {
-    try { await navigator.share({ title: 'FIFA World Cup 2026 Live Bracket', text, url }); return; }
+    try { await navigator.share({ title: 'World Cup 2026 Live Bracket', text, url }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
 
@@ -89,8 +89,12 @@ export default function Header({ lastUpdated, apiStatus, picks }) {
 
   return (
     <header className="site-header">
-      <h1>FIFA World Cup 2026</h1>
-      <p>Round of 32 · Knockout Bracket</p>
+      <h1>
+        <span className="hdr-title-eyebrow">World Cup</span>
+        <span className="hdr-title-year">2026</span>
+      </h1>
+      <div className="hdr-rule" />
+      <p>Knockout Bracket</p>
       <div className="status-bar">
         <span className="live-dot" />
         <span>Last updated: {timeStr}</span>
