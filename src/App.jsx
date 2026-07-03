@@ -27,23 +27,30 @@ export default function App() {
 
   useGoalDetector(liveData, setGoalToast);
 
+  // On touch devices skip tooltips entirely — tapping opens the modal directly
+  const isTouch = window.matchMedia('(hover: none)').matches;
+
   const [tooltip, setTooltip] = useState({ visible: false, type: 'match', match: null, data: null, info: null, x: 0, y: 0 });
 
   const handleMatchEnter = useCallback((e, match, data) => {
+    if (isTouch) return;
     setTooltip({ visible: true, type: 'match', match, data, info: null, x: e.clientX, y: e.clientY });
-  }, []);
+  }, [isTouch]);
 
   const handleRoundEnter = useCallback((e, info) => {
+    if (isTouch) return;
     setTooltip({ visible: true, type: 'inner', match: null, data: null, info, x: e.clientX, y: e.clientY });
-  }, []);
+  }, [isTouch]);
 
   const handleMatchMove = useCallback((e) => {
+    if (isTouch) return;
     setTooltip(prev => prev.visible ? { ...prev, x: e.clientX, y: e.clientY } : prev);
-  }, []);
+  }, [isTouch]);
 
   const handleLeave = useCallback(() => {
+    if (isTouch) return;
     setTooltip(prev => ({ ...prev, visible: false }));
-  }, []);
+  }, [isTouch]);
 
   // Open predict modal — triggered by clicking a connector dot
   const handleMatchClick = useCallback((info) => {
