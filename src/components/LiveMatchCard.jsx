@@ -74,7 +74,7 @@ function LiveCard({ m, d }) {
         <span className="lmc-badge">● LIVE</span>
         <span className="lmc-round">Round of 32</span>
         {d.minuteStr && <span className="lmc-minute">{d.minuteStr}</span>}
-        <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn">
+        <a href="https://www.rte.ie/player/onnow" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn">
           Watch on RTÉ ▶
         </a>
       </div>
@@ -130,7 +130,7 @@ function NextUpCard({ match }) {
         <span className="lmc-badge lmc-badge--next">NEXT UP</span>
         <span className="lmc-round">{match.roundLabel}</span>
         <span className="lmc-minute" style={{ color: 'var(--gold)' }}>{dateStr}</span>
-        <a href="https://www.rte.ie/player/" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn lmc-watch-btn--dim">RTÉ ▶</a>
+        <a href="https://www.rte.ie/player/onnow" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn lmc-watch-btn--dim">RTÉ ▶</a>
       </div>
       <div className="lmc-body">
         <div className="lmc-team">
