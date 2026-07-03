@@ -1,3 +1,8 @@
 name = "wc-scores"
 main = "index.js"
 compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wc-picks"
+database_id = "f9c2b219-8623-4bf1-a543-8bff96b52e8d"

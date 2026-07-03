@@ -7,22 +7,60 @@ const CORS = {
 
 const LIVE_STATUS = new Set(['IN_PLAY', 'PAUSED', 'HALFTIME', 'EXTRA_TIME', 'PENALTY_SHOOTOUT']);
 
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS },
+  });
+}
+
+async function getAggregate(db, matchKey) {
+  const { results } = await db
+    .prepare('SELECT picked_team, COUNT(*) as cnt FROM picks WHERE match_key = ? GROUP BY picked_team')
+    .bind(matchKey)
+    .all();
+  const [home, away] = matchKey.split('-');
+  const counts = Object.fromEntries(results.map(r => [r.picked_team, Number(r.cnt)]));
+  const homeCount = counts[home] || 0;
+  const awayCount = counts[away] || 0;
+  return { homeCount, awayCount, total: homeCount + awayCount };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
 
-    if (!env.FOOTBALL_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'FOOTBALL_KEY secret not configured in Worker' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } }
-      );
-    }
-
     const url = new URL(request.url);
 
-    // Match detail endpoint: /match/:id  → goal scorers for live card
+    // ── Community picks: GET /picks/:matchKey ──────────────────────────────────
+    const picksGet = url.pathname.match(/^\/picks\/([A-Z]{2,4}-[A-Z]{2,4})$/);
+    if (picksGet && request.method === 'GET') {
+      if (!env.DB) return json({ homeCount: 0, awayCount: 0, total: 0 });
+      const matchKey = picksGet[1];
+      return json(await getAggregate(env.DB, matchKey));
+    }
+
+    // ── Community picks: POST /picks ───────────────────────────────────────────
+    if (url.pathname === '/picks' && request.method === 'POST') {
+      if (!env.DB) return json({ error: 'DB not configured' }, 503);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+      const { userId, matchKey, pickedTeam } = body || {};
+      if (!userId || !matchKey || !pickedTeam) return json({ error: 'Missing fields' }, 400);
+      await env.DB
+        .prepare('INSERT OR REPLACE INTO picks (user_id, match_key, picked_team, updated_at) VALUES (?, ?, ?, ?)')
+        .bind(userId, matchKey, pickedTeam, Date.now())
+        .run();
+      return json(await getAggregate(env.DB, matchKey));
+    }
+
+    if (!env.FOOTBALL_KEY) {
+      return json({ error: 'FOOTBALL_KEY secret not configured in Worker' }, 500);
+    }
+
+    // ── Match detail: /match/:id  → goal scorers for live card ─────────────────
     const matchRoute = url.pathname.match(/^\/match\/(\d+)$/);
     if (matchRoute) {
       const r = await fetch(`https://api.football-data.org/v4/matches/${matchRoute[1]}`, {
@@ -32,7 +70,7 @@ export default {
       return new Response(txt, { headers: { 'Content-Type': 'application/json', ...CORS } });
     }
 
-    // Debug endpoint: bypass cache, return raw API response
+    // ── Debug: bypass cache ────────────────────────────────────────────────────
     if (url.pathname === '/debug') {
       const r = await fetch(API_URL, { headers: { 'X-Auth-Token': env.FOOTBALL_KEY } });
       const txt = await r.text();
@@ -42,39 +80,26 @@ export default {
     const cache = caches.default;
     const cacheKey = new Request('https://wc26-fixtures.internal/v2');
 
-    // Serve from Cloudflare edge cache if still fresh
     const cached = await cache.match(cacheKey);
     if (cached) {
       const body = await cached.arrayBuffer();
-      return new Response(body, {
-        headers: { 'Content-Type': 'application/json', ...CORS },
-      });
+      return new Response(body, { headers: { 'Content-Type': 'application/json', ...CORS } });
     }
 
-    // Cache miss — hit football-data.org
-    const upstream = await fetch(API_URL, {
-      headers: { 'X-Auth-Token': env.FOOTBALL_KEY },
-    });
+    const upstream = await fetch(API_URL, { headers: { 'X-Auth-Token': env.FOOTBALL_KEY } });
 
     if (!upstream.ok) {
-      return new Response(
-        JSON.stringify({ error: `Upstream API error: ${upstream.status}` }),
-        { status: upstream.status, headers: { 'Content-Type': 'application/json', ...CORS } }
-      );
+      return json({ error: `Upstream API error: ${upstream.status}` }, upstream.status);
     }
 
     const body = await upstream.text();
 
-    // Adaptive TTL: 60 s when a match is live, 15 min otherwise
     let ttl = 900;
     try {
       const { matches } = JSON.parse(body);
-      if (Array.isArray(matches) && matches.some(m => LIVE_STATUS.has(m.status))) {
-        ttl = 60;
-      }
-    } catch (_) { /* non-fatal */ }
+      if (Array.isArray(matches) && matches.some(m => LIVE_STATUS.has(m.status))) ttl = 60;
+    } catch (_) {}
 
-    // Store in Cloudflare edge cache
     await cache.put(
       cacheKey,
       new Response(body, {
@@ -82,8 +107,6 @@ export default {
       })
     );
 
-    return new Response(body, {
-      headers: { 'Content-Type': 'application/json', ...CORS },
-    });
+    return new Response(body, { headers: { 'Content-Type': 'application/json', ...CORS } });
   },
 };

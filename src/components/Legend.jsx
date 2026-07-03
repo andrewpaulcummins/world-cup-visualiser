@@ -19,7 +19,7 @@ export default function Legend() {
         <span className="legend-hint-icon">◎</span> Click team — trace path to Final
       </div>
       <div className="legend-hint">
-        <span className="legend-hint-icon" style={{ color: '#C9A84C' }}>◌</span> Hover unplayed match → pick a winner
+        <span className="legend-hint-icon" style={{ color: '#C9A84C' }}>◌</span> Click connector — predict & see community picks
       </div>
     </div>
   );

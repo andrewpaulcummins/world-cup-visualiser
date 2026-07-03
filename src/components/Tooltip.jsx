@@ -17,19 +17,19 @@ function formatDateTime(utcDate) {
 }
 
 // ── Inner-round tooltip (R16 / QF / SF) ───────────────────────────────────────
-function RoundTooltip({ info, x, y, picks, onPick, stayProps }) {
+function RoundTooltip({ info, x, y }) {
   const { stage, homeCode, awayCode, homeLabel, awayLabel, utcDate, status, homeScore, awayScore, winner } = info;
   const stageLabel = stage === 'R16' ? 'Round of 16' : stage === 'QF' ? 'Quarter-final' : 'Semi-final';
   const hasScore   = status !== 'scheduled' && homeScore != null && awayScore != null;
-  const flag1 = homeCode ? (flagUrl(homeCode) ? null : FLAGS[homeCode]) : null;
-  const flag2 = awayCode ? (flagUrl(awayCode) ? null : FLAGS[awayCode]) : null;
 
   function TeamRow({ code, label, score, isWin }) {
     const url = code ? flagUrl(code) : null;
     return (
       <div className="t-team-row">
         <span className={`t-team-name${isWin ? ' t-winner' : ''}`}>
-          {url ? <img src={url} alt={code} style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, marginRight: 5, verticalAlign: 'middle' }} /> : (FLAGS[code] || '')} {label}
+          {url
+            ? <img src={url} alt={code} style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, marginRight: 5, verticalAlign: 'middle' }} />
+            : (FLAGS[code] || '')} {label}
         </span>
         {hasScore && <span className={`t-team-score${isWin ? ' t-winner' : ''}`}>{score}</span>}
       </div>
@@ -37,7 +37,7 @@ function RoundTooltip({ info, x, y, picks, onPick, stayProps }) {
   }
 
   return (
-    <div className="tooltip" style={pos(x, y)} {...stayProps}>
+    <div className="tooltip" style={pos(x, y)}>
       <div className="t-meta" style={{ marginBottom: 6, fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{stageLabel}</div>
       <TeamRow code={homeCode} label={homeLabel} score={homeScore} isWin={winner === homeCode} />
       <TeamRow code={awayCode} label={awayLabel} score={awayScore} isWin={winner === awayCode} />
@@ -47,34 +47,15 @@ function RoundTooltip({ info, x, y, picks, onPick, stayProps }) {
         <div className="t-meta" style={{ marginTop: 6 }}>📅 {formatDateTime(utcDate)}</div>
       )}
       {status === 'scheduled' && !utcDate && <div className="t-meta">Date TBC</div>}
-      {status === 'scheduled' && homeCode && awayCode && onPick && (() => {
-        const pick = picks?.[`${homeCode}-${awayCode}`] || picks?.[`${awayCode}-${homeCode}`] || null;
-        const url1 = flagUrl(homeCode);
-        const url2 = flagUrl(awayCode);
-        return (
-          <div className="t-predict">
-            <div className="t-predict-label">Your pick:</div>
-            <div className="t-predict-btns">
-              <button
-                className={`t-predict-btn${pick === homeCode ? ' t-predict-btn--active' : ''}`}
-                onClick={e => { e.stopPropagation(); onPick(homeCode, awayCode, homeCode); }}>
-                {url1 ? <img src={url1} alt={homeCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[homeCode] || '')} {homeLabel}
-              </button>
-              <button
-                className={`t-predict-btn${pick === awayCode ? ' t-predict-btn--active' : ''}`}
-                onClick={e => { e.stopPropagation(); onPick(homeCode, awayCode, awayCode); }}>
-                {url2 ? <img src={url2} alt={awayCode} style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, marginRight: 4, verticalAlign: 'middle' }} /> : (FLAGS[awayCode] || '')} {awayLabel}
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+      {status === 'scheduled' && homeCode && awayCode && (
+        <div className="t-meta" style={{ marginTop: 5, color: '#C9A84C', fontSize: '0.65rem' }}>Click connector to predict</div>
+      )}
     </div>
   );
 }
 
-// ── R32 match tooltip (existing behaviour) ─────────────────────────────────────
-function MatchTooltip({ match, data, x, y, picks, onPick, stayProps }) {
+// ── R32 match tooltip ──────────────────────────────────────────────────────────
+function MatchTooltip({ match, data, x, y }) {
   const d    = data;
   const flag1 = FLAGS[match.home] || '';
   const flag2 = FLAGS[match.away] || '';
@@ -96,7 +77,7 @@ function MatchTooltip({ match, data, x, y, picks, onPick, stayProps }) {
   const winner = d?.winner ?? (hasScore ? (hs > as ? match.home : as > hs ? match.away : null) : null);
 
   return (
-    <div className="tooltip" style={pos(x, y)} {...stayProps}>
+    <div className="tooltip" style={pos(x, y)}>
       <div className="t-team-row">
         <span className={`t-team-name${winner === match.home ? ' t-winner' : ''}`}>{flag1} {n1}</span>
         {hasScore && <span className={`t-team-score${winner === match.home ? ' t-winner' : ''}`}>{hsLabel}</span>}
@@ -115,42 +96,20 @@ function MatchTooltip({ match, data, x, y, picks, onPick, stayProps }) {
            : 'Full Time'}
         </div>
       )}
-      {status === 'scheduled' && <div className="t-meta">Upcoming</div>}
-      {status === 'scheduled' && onPick && (() => {
-        const key  = `${match.home}-${match.away}`;
-        const rKey = `${match.away}-${match.home}`;
-        const pick = picks?.[key] || picks?.[rKey] || null;
-        return (
-          <div className="t-predict">
-            <div className="t-predict-label">Your pick:</div>
-            <div className="t-predict-btns">
-              <button
-                className={`t-predict-btn${pick === match.home ? ' t-predict-btn--active' : ''}`}
-                onClick={e => { e.stopPropagation(); onPick(match.home, match.away, match.home); }}>
-                {flag1} {n1}
-              </button>
-              <button
-                className={`t-predict-btn${pick === match.away ? ' t-predict-btn--active' : ''}`}
-                onClick={e => { e.stopPropagation(); onPick(match.home, match.away, match.away); }}>
-                {flag2} {n2}
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+      {status === 'scheduled' && (
+        <div className="t-meta" style={{ marginTop: 5, color: '#C9A84C', fontSize: '0.65rem' }}>Click connector to predict</div>
+      )}
     </div>
   );
 }
 
-export default function Tooltip({ tooltip, picks, onPick, onTooltipEnter, onTooltipLeave }) {
+export default function Tooltip({ tooltip }) {
   if (!tooltip.visible) return null;
 
-  const stayProps = { onMouseEnter: onTooltipEnter, onMouseLeave: onTooltipLeave };
-
   if (tooltip.type === 'inner' && tooltip.info) {
-    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} stayProps={stayProps} />;
+    return <RoundTooltip info={tooltip.info} x={tooltip.x} y={tooltip.y} />;
   }
 
   if (!tooltip.match) return null;
-  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} picks={picks} onPick={onPick} stayProps={stayProps} />;
+  return <MatchTooltip match={tooltip.match} data={tooltip.data} x={tooltip.x} y={tooltip.y} />;
 }

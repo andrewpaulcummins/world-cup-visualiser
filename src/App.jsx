@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { MATCHUPS } from './data/matchups';
 import { useScores } from './hooks/useScores';
 import { useGoalDetector } from './hooks/useGoalDetector';
 import { usePredictions } from './hooks/usePredictions';
+import { useCommunityPicks } from './hooks/useCommunityPicks';
 import Header from './components/Header';
 import BracketSvg from './components/BracketSvg';
 import Legend from './components/Legend';
@@ -10,14 +11,17 @@ import LiveMatchCard from './components/LiveMatchCard';
 import CelebrationSplash from './components/CelebrationSplash';
 import GoalToast from './components/GoalToast';
 import Tooltip from './components/Tooltip';
+import PredictModal from './components/PredictModal';
 
 export default function App() {
   const { liveData, innerRounds, schedule, tournamentWinner, lastUpdated, apiStatus } = useScores();
-  const { picks, setPick, getPick } = usePredictions();
+  const { picks, setPick } = usePredictions();
+  const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
 
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [goalToast, setGoalToast]             = useState(null);
   const [selectedTeam, setSelectedTeam]       = useState(null);
+  const [modalInfo, setModalInfo]             = useState(null);
 
   const previewWinner = new URLSearchParams(window.location.search).get('splash');
 
@@ -37,26 +41,31 @@ export default function App() {
     setTooltip(prev => prev.visible ? { ...prev, x: e.clientX, y: e.clientY } : prev);
   }, []);
 
-  const leaveTimer = useRef(null);
-
   const handleLeave = useCallback(() => {
-    leaveTimer.current = setTimeout(() => {
-      setTooltip(prev => ({ ...prev, visible: false }));
-    }, 180);
-  }, []);
-
-  const handleTooltipEnter = useCallback(() => {
-    clearTimeout(leaveTimer.current);
-  }, []);
-
-  const handleTooltipLeave = useCallback(() => {
-    clearTimeout(leaveTimer.current);
     setTooltip(prev => ({ ...prev, visible: false }));
   }, []);
 
-  const handlePick = useCallback((home, away, winner) => {
-    setPick(home, away, winner);
-  }, [setPick]);
+  // Open predict modal — triggered by clicking a connector dot
+  const handleMatchClick = useCallback((info) => {
+    setTooltip(prev => ({ ...prev, visible: false }));
+    setModalInfo(info);
+    fetchPicks(info.matchKey);
+  }, [fetchPicks]);
+
+  // Pick in modal: update local predictions + submit to community DB
+  const handleModalPick = useCallback((pickedTeam) => {
+    if (!modalInfo?.matchKey) return;
+    const [home, away] = modalInfo.matchKey.split('-');
+    setPick(home, away, pickedTeam);
+    submitPick(modalInfo.matchKey, pickedTeam);
+  }, [modalInfo, setPick, submitPick]);
+
+  const handleModalClose = useCallback(() => setModalInfo(null), []);
+
+  // Derive user's current pick for the open modal
+  const myPick = modalInfo?.matchKey
+    ? (picks?.[modalInfo.matchKey] || picks?.[`${modalInfo.awayCode}-${modalInfo.homeCode}`] || null)
+    : null;
 
   return (
     <>
@@ -73,13 +82,24 @@ export default function App() {
         onMatchMove={handleMatchMove}
         onLeave={handleLeave}
         onRoundEnter={handleRoundEnter}
+        onMatchClick={handleMatchClick}
         selectedTeam={selectedTeam}
         onTeamSelect={setSelectedTeam}
         picks={picks}
       />
       <Legend />
       <LiveMatchCard liveData={liveData} schedule={schedule} />
-      <Tooltip tooltip={tooltip} picks={picks} onPick={handlePick} onTooltipEnter={handleTooltipEnter} onTooltipLeave={handleTooltipLeave} />
+      <Tooltip tooltip={tooltip} />
+      {modalInfo && (
+        <PredictModal
+          info={modalInfo}
+          communityData={communityData}
+          loading={communityLoading}
+          myPick={myPick}
+          onPick={handleModalPick}
+          onClose={handleModalClose}
+        />
+      )}
     </>
   );
 }

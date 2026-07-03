@@ -90,7 +90,7 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
-export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, selectedTeam, onTeamSelect, picks }) {
+export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, picks }) {
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
 
@@ -290,7 +290,16 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         onMouseEnter={e => r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d)}
         onMouseMove={e => onMatchMove(e)}
         onMouseLeave={onLeave}
-        onClick={e => { e.stopPropagation(); r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d); }}>
+        onClick={e => {
+          e.stopPropagation();
+          onMatchClick?.({
+            matchKey: `${match.home}-${match.away}`,
+            homeCode: match.home, awayCode: match.away,
+            homeLabel: NAMES[match.home] || match.home,
+            awayLabel: NAMES[match.away] || match.away,
+            stage: 'R32', status,
+          });
+        }}>
         {w ? (
           <>
             <circle r="18" fill="#0F0F1A" stroke="#C9A84C" strokeWidth="1.5" />
@@ -319,7 +328,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           onMouseEnter={e => r16NodeInfo && onRoundEnter(e, r16NodeInfo)}
           onMouseMove={e => onMatchMove(e)}
           onMouseLeave={onLeave}
-          onClick={e => { e.stopPropagation(); r16NodeInfo && onRoundEnter(e, r16NodeInfo); }} />,
+          onClick={e => {
+            e.stopPropagation();
+            if (!r16NodeInfo) return;
+            onMatchClick?.({
+              matchKey: r16NodeInfo.homeCode && r16NodeInfo.awayCode
+                ? `${r16NodeInfo.homeCode}-${r16NodeInfo.awayCode}` : null,
+              ...r16NodeInfo,
+            });
+          }} />,
       );
     }
 
