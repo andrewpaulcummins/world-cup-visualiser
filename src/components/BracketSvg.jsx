@@ -131,7 +131,7 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
-export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, picks }) {
+export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks }) {
   const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
@@ -267,7 +267,12 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           onMouseEnter={e => onMatchEnter(e, match, d)}
           onMouseMove={e => onMatchMove(e)}
           onMouseLeave={onLeave}
-          onClick={e => { e.stopPropagation(); onMatchEnter(e, match, d); if (!isLose) onTeamSelect?.(isSelected ? null : code); }}>
+          onClick={e => {
+            e.stopPropagation();
+            if (isLose) { onEliminatedClick?.(NAMES[code] || code); return; }
+            onMatchEnter(e, match, d);
+            onTeamSelect?.(isSelected ? null : code);
+          }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
           {flagUrl(code)

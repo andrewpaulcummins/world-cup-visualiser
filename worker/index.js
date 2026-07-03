@@ -1,5 +1,4 @@
 const API_URL = 'https://api.football-data.org/v4/competitions/WC/matches';
-const AF_HOST = 'https://v3.football.api-sports.io';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,40 +24,6 @@ async function getAggregate(db, matchKey) {
   const homeCount = counts[home] || 0;
   const awayCount = counts[away] || 0;
   return { homeCount, awayCount, total: homeCount + awayCount };
-}
-
-// Flexible name → TLA map for matching api-football.com team names
-const AF_TEAM_NAMES = {
-  ARG:['Argentina'], AUS:['Australia'], AUT:['Austria'], BEL:['Belgium'],
-  BFA:['Burkina Faso'], BIH:['Bosnia'], BRA:['Brazil'], CAN:['Canada'],
-  CHE:['Switzerland'], CHI:['Chile'], CIV:["Ivory Coast","Côte d'Ivoire"],
-  COD:['DR Congo','Congo DR'], COL:['Colombia'], CPV:['Cape Verde'],
-  CRC:['Costa Rica'], CRO:['Croatia'], CUB:['Cuba'], CZE:['Czechia','Czech Republic'],
-  DEN:['Denmark'], DOM:['Dominican'], DZA:['Algeria'], ECU:['Ecuador'],
-  EGY:['Egypt'], ENG:['England'], ESP:['Spain'], ETH:['Ethiopia'],
-  FIN:['Finland'], FRA:['France'], GER:['Germany'], GHA:['Ghana'],
-  GRE:['Greece'], GUA:['Guatemala'], GUI:['Guinea'], HAI:['Haiti'],
-  HON:['Honduras'], HUN:['Hungary'], IND:['India'], IRE:['Ireland','Republic of Ireland'],
-  IRL:['Ireland','Republic of Ireland'], IRN:['Iran'], IRQ:['Iraq'],
-  ISL:['Iceland'], ISR:['Israel'], JAM:['Jamaica'], JOR:['Jordan'],
-  JPN:['Japan'], KEN:['Kenya'], KOR:['South Korea','Korea Republic'],
-  KSA:['Saudi Arabia'], KUW:['Kuwait'], MAR:['Morocco'], MEX:['Mexico'],
-  MKD:['North Macedonia'], MLI:['Mali'], MOZ:['Mozambique'], NED:['Netherlands'],
-  NGA:['Nigeria'], NIC:['Nicaragua'], NOR:['Norway'], NZL:['New Zealand'],
-  OMN:['Oman'], PAN:['Panama'], PAR:['Paraguay'], PER:['Peru'],
-  PHL:['Philippines'], POL:['Poland'], POR:['Portugal'], QAT:['Qatar'],
-  ROU:['Romania'], RSA:['South Africa'], SCO:['Scotland'], SEN:['Senegal'],
-  SLV:['El Salvador'], SRB:['Serbia'], SVK:['Slovakia'], SVN:['Slovenia'],
-  SWE:['Sweden'], TAN:['Tanzania'], THA:['Thailand'], TTO:['Trinidad'],
-  TUN:['Tunisia'], TUR:['Turkey'], UGA:['Uganda'], UKR:['Ukraine'],
-  URU:['Uruguay'], USA:['United States','USA'], UZB:['Uzbekistan'],
-  VEN:['Venezuela'], VIE:['Vietnam'], WAL:['Wales'], ZAM:['Zambia'], ZIM:['Zimbabwe'],
-};
-
-function teamNameMatches(apiName, code) {
-  const candidates = AF_TEAM_NAMES[code] || [code];
-  const n = apiName.toLowerCase();
-  return candidates.some(c => n.includes(c.toLowerCase()) || c.toLowerCase().includes(n));
 }
 
 export default {
@@ -90,91 +55,6 @@ export default {
         .bind(userId, matchKey, pickedTeam, Date.now())
         .run();
       return json(await getAggregate(env.DB, matchKey));
-    }
-
-    // ── api-football.com diagnostics: GET /af-debug?date=YYYY-MM-DD ─────────────
-    if (url.pathname === '/af-debug') {
-      const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
-      if (!env.APIFOOTBALL_KEY) return json({ error: 'APIFOOTBALL_KEY not set' });
-      const afH = { 'x-apisports-key': env.APIFOOTBALL_KEY };
-      const r = await fetch(`${AF_HOST}/fixtures?date=${date}&league=1&season=2026`, { headers: afH });
-      const raw = await r.json();
-      return new Response(JSON.stringify({
-        status: r.status,
-        keyPresent: !!env.APIFOOTBALL_KEY,
-        date,
-        fixtureCount: (raw.response || []).length,
-        errors: raw.errors,
-        teams: (raw.response || []).map(f => ({
-          home: f.teams?.home?.name,
-          away: f.teams?.away?.name,
-          id: f.fixture?.id,
-          status: f.fixture?.status?.short,
-        })),
-      }, null, 2), { headers: { 'Content-Type': 'application/json', ...CORS } });
-    }
-
-    // ── Goal scorers from api-football.com: GET /af-events?home=EGY&away=AUS&date=YYYY-MM-DD ──
-    if (url.pathname === '/af-events' && request.method === 'GET') {
-      const home = url.searchParams.get('home');
-      const away = url.searchParams.get('away');
-      const date = url.searchParams.get('date');
-      if (!home || !away || !date || !env.APIFOOTBALL_KEY) return json({ goals: [], debug: 'missing params or key' });
-
-      const afH = { 'x-apisports-key': env.APIFOOTBALL_KEY };
-
-      // Step 1: get day's WC fixtures — cache 24 hrs (fixture IDs never change once scheduled)
-      const fixCacheKey = new Request(`https://af-internal/fixtures-${date}`);
-      let fixData;
-      const cachedFix = await cache.match(fixCacheKey);
-      if (cachedFix) {
-        fixData = await cachedFix.json();
-      } else {
-        const r = await fetch(`${AF_HOST}/fixtures?date=${date}&league=1&season=2026`, { headers: afH });
-        fixData = await r.json();
-        if ((fixData.response || []).length > 0) {
-          await cache.put(fixCacheKey, new Response(JSON.stringify(fixData), {
-            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=86400' },
-          }));
-        }
-      }
-
-      // Find the fixture matching our home/away team codes
-      const allTeams = (fixData.response || []).map(f => `${f.teams.home.name} v ${f.teams.away.name}`);
-      const fix = (fixData.response || []).find(f =>
-        (teamNameMatches(f.teams.home.name, home) && teamNameMatches(f.teams.away.name, away)) ||
-        (teamNameMatches(f.teams.home.name, away) && teamNameMatches(f.teams.away.name, home))
-      );
-      if (!fix) return json({ goals: [], debug: { reason: 'fixture not found', date, home, away, fixturesOnDate: allTeams, apiErrors: fixData.errors } });
-
-      const fid = fix.fixture.id;
-      const homeId = fix.teams.home.id;
-
-      // Step 2: get events — cache 5 min (free tier: 100 calls/day, so ~1 per 14 min max)
-      const evCacheKey = new Request(`https://af-internal/events-${fid}`);
-      let evData;
-      const cachedEv = await cache.match(evCacheKey);
-      if (cachedEv) {
-        evData = await cachedEv.json();
-      } else {
-        const r = await fetch(`${AF_HOST}/fixtures/events?fixture=${fid}`, { headers: afH });
-        evData = await r.json();
-        await cache.put(evCacheKey, new Response(JSON.stringify(evData), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=300' },
-        }));
-      }
-
-      const goals = (evData.response || [])
-        .filter(e => e.type === 'Goal' && e.detail !== 'Missed Penalty')
-        .map(e => ({
-          minute: e.time.elapsed,
-          scorer: { name: e.player.name },
-          // Map team.id back to the TLA codes we received
-          team: { tla: e.team.id === homeId ? home : away },
-          ownGoal: e.detail === 'Own Goal',
-        }));
-
-      return json({ goals, fixtureId: fid });
     }
 
     if (!env.FOOTBALL_KEY) {

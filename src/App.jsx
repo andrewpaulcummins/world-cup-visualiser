@@ -26,6 +26,7 @@ export default function App() {
   const [goalToast, setGoalToast]             = useState(null);
   const [selectedTeam, setSelectedTeam]       = useState(null);
   const [modalInfo, setModalInfo]             = useState(null);
+  const [elimMsg, setElimMsg]                 = useState(null);
 
   const previewWinner = new URLSearchParams(window.location.search).get('splash');
 
@@ -71,6 +72,11 @@ export default function App() {
 
   const handleModalClose = useCallback(() => setModalInfo(null), []);
 
+  const handleEliminatedClick = useCallback((name) => {
+    setElimMsg(name);
+    setTimeout(() => setElimMsg(null), 2500);
+  }, []);
+
   const myPick = modalInfo?.matchKey
     ? (picks?.[modalInfo.matchKey] || picks?.[`${modalInfo.awayCode}-${modalInfo.homeCode}`] || null)
     : null;
@@ -82,6 +88,9 @@ export default function App() {
         <CelebrationSplash winner={previewWinner || tournamentWinner} onDismiss={() => setSplashDismissed(true)} />
       )}
       <GoalToast toast={goalToast} onDismiss={() => setGoalToast(null)} />
+      {elimMsg && (
+        <div className="elim-toast">{elimMsg} have been eliminated</div>
+      )}
       <Header lastUpdated={lastUpdated} apiStatus={apiStatus} picks={picks} />
 
       <div className="view-tabs">
@@ -102,6 +111,7 @@ export default function App() {
             onMatchClick={handleMatchClick}
             selectedTeam={selectedTeam}
             onTeamSelect={setSelectedTeam}
+            onEliminatedClick={handleEliminatedClick}
             picks={picks}
           />
           <Legend />

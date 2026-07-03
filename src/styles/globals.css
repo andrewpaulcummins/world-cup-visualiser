@@ -1178,6 +1178,30 @@ html, body {
 }
 .bracket-zoom-reset:hover { background: rgba(201,168,76,0.25); }
 
+/* ── Eliminated team toast ── */
+.elim-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(180, 40, 40, 0.92);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  animation: elim-fade 2.5s ease forwards;
+}
+@keyframes elim-fade {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── Mobile tweaks ── */
 @media (max-width: 767px) {
   .bracket-wrap {

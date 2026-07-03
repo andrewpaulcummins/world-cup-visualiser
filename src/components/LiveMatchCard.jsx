@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MATCHUPS, NAMES, FLAGS, flagUrl } from '../data/matchups';
 import { useCountdown } from '../hooks/useCountdown';
-import { useAfScorers } from '../hooks/useAfScorers';
-
-const WORKER = 'https://wc-scores.andrewpaulcummins.workers.dev';
 
 function formatDate(utcDate) {
   if (!utcDate) return '';
@@ -31,51 +28,8 @@ function teamName(code) {
   return NAMES[code] || code;
 }
 
-// ── Match stats (goal scorers) via Worker proxy ──────────────────────────────
-function useMatchStats(matchId, isLive) {
-  const [goals, setGoals] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!matchId || !isLive) return;
-    let cancelled = false;
-
-    function fetchGoals() {
-      fetch(`${WORKER}/match/${matchId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (cancelled) return;
-          if (Array.isArray(data.goals)) { setGoals(data.goals); setLoaded(true); }
-        })
-        .catch(() => {});
-    }
-
-    fetchGoals();
-    const interval = setInterval(fetchGoals, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [matchId, isLive]);
-
-  return { goals, loaded };
-}
-
 // ── Live match card ──────────────────────────────────────────────────────────
 function LiveCard({ m, d }) {
-  // Try api-football.com first (richer events); fall back to football-data.org goals
-  const afGoals = useAfScorers(m.home, m.away, d.utcDate, true);
-  const rawGoals = afGoals.length > 0 ? afGoals : (d.goals || []);
-
-  // Goals counting FOR each team (own goals flip to opposing team)
-  const homeGoals = rawGoals.filter(g =>
-    g.ownGoal ? g.team?.tla === m.away : g.team?.tla === m.home
-  );
-  const awayGoals = rawGoals.filter(g =>
-    g.ownGoal ? g.team?.tla === m.home : g.team?.tla === m.away
-  );
-
-  // Prefer API score; fall back to counting goal events
-  const scoreH = d.homeScore != null ? d.homeScore : (homeGoals.length || null);
-  const scoreA = d.awayScore != null ? d.awayScore : (awayGoals.length || null);
-
   return (
     <div className="lmc">
       <div className="lmc-header">
@@ -89,40 +43,18 @@ function LiveCard({ m, d }) {
       <div className="lmc-body">
         <div className="lmc-team">
           <TeamFlag code={m.home} />
-          <div className="lmc-team-info">
-            <span className="lmc-name">{teamName(m.home)}</span>
-            {homeGoals.length > 0 && (
-              <div className="lmc-scorers">
-                {homeGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">
-                    ⚽ {g.scorer?.name?.split(' ').pop()}{g.ownGoal ? ' (OG)' : ''} {g.minute}'
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="lmc-name">{teamName(m.home)}</span>
         </div>
         <div className="lmc-scorebox">
-          <span className="lmc-score">{scoreH ?? '-'}</span>
+          <span className="lmc-score">{d.homeScore ?? '-'}</span>
           <span className="lmc-sep">-</span>
-          <span className="lmc-score">{scoreA ?? '-'}</span>
+          <span className="lmc-score">{d.awayScore ?? '-'}</span>
           {d.duration === 'PENALTY_SHOOTOUT' && d.penHome != null && (
             <span className="lmc-pens">({d.penHome}–{d.penAway} pens)</span>
           )}
         </div>
         <div className="lmc-team lmc-team--right">
-          <div className="lmc-team-info lmc-team-info--right">
-            <span className="lmc-name">{teamName(m.away)}</span>
-            {awayGoals.length > 0 && (
-              <div className="lmc-scorers lmc-scorers--right">
-                {awayGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">
-                    {g.minute}' {g.scorer?.name?.split(' ').pop()}{g.ownGoal ? ' (OG)' : ''} ⚽
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="lmc-name">{teamName(m.away)}</span>
           <TeamFlag code={m.away} />
         </div>
       </div>
@@ -204,12 +136,6 @@ function FinalCard({ match }) {
   const isLive = match.status === 'live';
   const isFinal = match.status === 'final';
   const countdown = useCountdown(match.utcDate);
-
-  const goals = match.goals || [];
-  const homeGoals = goals.filter(g => g.team?.tla === match.home);
-  const awayGoals = goals.filter(g => g.team?.tla === match.away);
-  const scoreH = match.homeScore != null ? match.homeScore : (homeGoals.length || null);
-  const scoreA = match.awayScore != null ? match.awayScore : (awayGoals.length || null);
   const dateStr = match.utcDate ? `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}` : '';
 
   return (
@@ -225,23 +151,14 @@ function FinalCard({ match }) {
       <div className="lmc-body">
         <div className="lmc-team">
           <TeamFlag code={match.home} />
-          <div className="lmc-team-info">
-            <span className="lmc-name lmc-name--final">{teamName(match.home)}</span>
-            {homeGoals.length > 0 && (
-              <div className="lmc-scorers">
-                {homeGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">⚽ {g.scorer?.name?.split(' ').pop()} {g.minute}'</span>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="lmc-name lmc-name--final">{teamName(match.home)}</span>
         </div>
         <div className="lmc-scorebox" style={{ flexDirection: 'column', gap: 4 }}>
           {(isLive || isFinal) ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span className="lmc-score lmc-score--final">{scoreH ?? '-'}</span>
+              <span className="lmc-score lmc-score--final">{match.homeScore ?? '-'}</span>
               <span className="lmc-sep">-</span>
-              <span className="lmc-score lmc-score--final">{scoreA ?? '-'}</span>
+              <span className="lmc-score lmc-score--final">{match.awayScore ?? '-'}</span>
             </div>
           ) : (
             <>
@@ -257,16 +174,7 @@ function FinalCard({ match }) {
           )}
         </div>
         <div className="lmc-team lmc-team--right">
-          <div className="lmc-team-info lmc-team-info--right">
-            <span className="lmc-name lmc-name--final">{teamName(match.away)}</span>
-            {awayGoals.length > 0 && (
-              <div className="lmc-scorers lmc-scorers--right">
-                {awayGoals.map((g, i) => (
-                  <span key={i} className="lmc-scorer">{g.minute}' {g.scorer?.name?.split(' ').pop()} ⚽</span>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="lmc-name lmc-name--final">{teamName(match.away)}</span>
           <TeamFlag code={match.away} />
         </div>
       </div>
