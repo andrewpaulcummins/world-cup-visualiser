@@ -92,12 +92,34 @@ export default {
       return json(await getAggregate(env.DB, matchKey));
     }
 
+    // ── api-football.com diagnostics: GET /af-debug?date=YYYY-MM-DD ─────────────
+    if (url.pathname === '/af-debug') {
+      const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+      if (!env.APIFOOTBALL_KEY) return json({ error: 'APIFOOTBALL_KEY not set' });
+      const afH = { 'x-apisports-key': env.APIFOOTBALL_KEY };
+      const r = await fetch(`${AF_HOST}/fixtures?date=${date}&league=1&season=2026`, { headers: afH });
+      const raw = await r.json();
+      return new Response(JSON.stringify({
+        status: r.status,
+        keyPresent: !!env.APIFOOTBALL_KEY,
+        date,
+        fixtureCount: (raw.response || []).length,
+        errors: raw.errors,
+        teams: (raw.response || []).map(f => ({
+          home: f.teams?.home?.name,
+          away: f.teams?.away?.name,
+          id: f.fixture?.id,
+          status: f.fixture?.status?.short,
+        })),
+      }, null, 2), { headers: { 'Content-Type': 'application/json', ...CORS } });
+    }
+
     // ── Goal scorers from api-football.com: GET /af-events?home=EGY&away=AUS&date=YYYY-MM-DD ──
     if (url.pathname === '/af-events' && request.method === 'GET') {
       const home = url.searchParams.get('home');
       const away = url.searchParams.get('away');
       const date = url.searchParams.get('date');
-      if (!home || !away || !date || !env.APIFOOTBALL_KEY) return json({ goals: [] });
+      if (!home || !away || !date || !env.APIFOOTBALL_KEY) return json({ goals: [], debug: 'missing params or key' });
 
       const afH = { 'x-apisports-key': env.APIFOOTBALL_KEY };
 
@@ -116,11 +138,12 @@ export default {
       }
 
       // Find the fixture matching our home/away team codes
+      const allTeams = (fixData.response || []).map(f => `${f.teams.home.name} v ${f.teams.away.name}`);
       const fix = (fixData.response || []).find(f =>
         (teamNameMatches(f.teams.home.name, home) && teamNameMatches(f.teams.away.name, away)) ||
         (teamNameMatches(f.teams.home.name, away) && teamNameMatches(f.teams.away.name, home))
       );
-      if (!fix) return json({ goals: [] });
+      if (!fix) return json({ goals: [], debug: { reason: 'fixture not found', date, home, away, fixturesOnDate: allTeams, apiErrors: fixData.errors } });
 
       const fid = fix.fixture.id;
       const homeId = fix.teams.home.id;

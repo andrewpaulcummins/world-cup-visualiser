@@ -7,7 +7,6 @@ export function usePinchZoom() {
 
   const onPointerDown = useCallback((e) => {
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    e.currentTarget.setPointerCapture?.(e.pointerId);
   }, []);
 
   const onPointerMove = useCallback((e) => {
