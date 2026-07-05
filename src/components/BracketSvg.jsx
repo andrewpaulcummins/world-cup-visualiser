@@ -131,6 +131,31 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
+function findNextMatchInfo(code, matchupsArr, ld, ir) {
+  const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
+  if (idx < 0) return null;
+  const match = matchupsArr[idx];
+  const d = getMatchData(ld, match.home, match.away);
+  const gsWinner = getWinner(d);
+  if (gsWinner !== code) return { type: 'match', match, data: d };
+  const pairIdx = Math.floor(idx / 2);
+  const r16Info = buildR16Info(pairIdx, matchupsArr, ld, ir);
+  if (!r16Info) return null;
+  if (r16Info.winner && r16Info.winner !== code) return null;
+  if (!r16Info.winner) return { type: 'inner', info: r16Info };
+  const qfI = Math.floor(idx / 4) * 4;
+  const qfInfo = buildQFInfo(qfI, matchupsArr, ld, ir);
+  if (!qfInfo) return null;
+  if (qfInfo.winner && qfInfo.winner !== code) return null;
+  if (!qfInfo.winner) return { type: 'inner', info: qfInfo };
+  const sfI = Math.floor(idx / 8) * 8;
+  const sfInfo = buildSFInfo(sfI, matchupsArr, ld, ir);
+  if (!sfInfo) return null;
+  if (sfInfo.winner && sfInfo.winner !== code) return null;
+  if (!sfInfo.winner) return { type: 'inner', info: sfInfo };
+  return null;
+}
+
 // Deterministic particle ring around trophy
 const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
   x: CX + Math.cos((i / 22) * Math.PI * 2) * (62 + (i % 5) * 14),
@@ -187,11 +212,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     const homeScore = d ? (d.home === match.home ? d.homeScore : d.awayScore) : '-';
     const awayScore = d ? (d.home === match.home ? d.awayScore : d.homeScore) : '-';
 
+    // Compute inner-round info once per slot — used for both lines and nodes.
+    const pairIdx  = Math.floor(i / 2);
+    const r16Info  = buildR16Info(pairIdx, matchups, liveData, innerRounds);
+
     // Per-path colors:
-    //   winner path  → blue       (match played, winner decided)
-    //   loser path   → near-black (eliminated)
-    //   live path    → green pulsing (only the two team → R32 paths)
-    //   unplayed     → grey       (match not yet played)
+    //   winner path  → team color  (match played, winner decided)
+    //   loser path   → near-black  (eliminated)
+    //   live path    → green pulsing
+    //   unplayed     → grey
     const GREY = '#707070';
     const homePathCol = status === 'live' ? LIVE_GREEN
                       : status === 'final' && w === match.home ? teamCol(match.home)
@@ -201,9 +230,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
                       : status === 'final' && w === match.away ? teamCol(match.away)
                       : status === 'final' && w !== match.away ? '#181822'
                       : GREY;
-    // Advancing path (R32→R16): always grey — the R16 match hasn't been played
-    // so this segment has no result to colour yet. Winner is shown at the R32 node.
-    const advCol  = GREY;
+    // Advancing path (R32→R16): winner's team color when decided, grey otherwise.
+    const advCol  = w ? teamCol(w) : GREY;
     const liveClass = status === 'live' ? 'live-stroke' : '';
 
     // ── Teams → R32 ──────────────────────────────────────────────────────────
@@ -233,30 +261,44 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     // ── R16 → QF (once per R16 pair) ─────────────────────────────────────────
     if (i % 2 === 0) {
       const sweep = Math.floor(i / 2) % 2 === 0 ? 1 : 0;
+      const r16LineCol = r16Info?.winner ? teamCol(r16Info.winner)
+        : r16Info?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`r16qf-${i}`} opacity={r16Op}
           d={arcElbow(posR16, fa(r16Frac), R_QF, posQF, sweep)}
-          fill="none" {...INNER_LINE} strokeLinejoin="round" />,
+          fill="none" stroke={r16LineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          className={r16Info?.status === 'live' ? 'live-stroke' : ''}
+          strokeLinejoin="round" />,
       );
     }
 
     // ── QF → SF (once per QF group) ──────────────────────────────────────────
     if (i % 4 === 0) {
       const sweep = Math.floor(i / 4) % 2 === 0 ? 1 : 0;
+      const qfInfoLine = buildQFInfo(i, matchups, liveData, innerRounds);
+      const qfLineCol = qfInfoLine?.winner ? teamCol(qfInfoLine.winner)
+        : qfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`qfsf-${i}`} opacity={qfOp}
           d={arcElbow(posQF, fa(qfFrac), R_SF, posSF, sweep)}
-          fill="none" {...INNER_LINE} strokeLinejoin="round" />,
+          fill="none" stroke={qfLineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          className={qfInfoLine?.status === 'live' ? 'live-stroke' : ''}
+          strokeLinejoin="round" />,
       );
     }
 
     // ── SF → Center (once per bracket half) ───────────────────────────────────
     if (i % 8 === 0) {
       const ctr = polar(R_CTR, fa(sfFrac));
+      const sfInfoLine = buildSFInfo(i, matchups, liveData, innerRounds);
+      const sfLineCol = sfInfoLine?.winner ? teamCol(sfInfoLine.winner)
+        : sfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
           d={`M ${posSF.x} ${posSF.y} L ${ctr.x} ${ctr.y}`}
-          fill="none" {...INNER_LINE} strokeLinejoin="round" />,
+          fill="none" stroke={sfLineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          className={sfInfoLine?.status === 'live' ? 'live-stroke' : ''}
+          strokeLinejoin="round" />,
       );
     }
 
@@ -280,8 +322,24 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           onClick={e => {
             e.stopPropagation();
             if (isLose) { onEliminatedClick?.(NAMES[code] || code); return; }
-            onMatchEnter(e, match, d);
             onTeamSelect?.(isSelected ? null : code);
+            const next = findNextMatchInfo(code, matchups, liveData, innerRounds);
+            if (!next) return;
+            if (next.type === 'match') {
+              onMatchClick?.({
+                matchKey: `${next.match.home}-${next.match.away}`,
+                homeCode: next.match.home, awayCode: next.match.away,
+                homeLabel: NAMES[next.match.home] || next.match.home,
+                awayLabel: NAMES[next.match.away] || next.match.away,
+                stage: 'R32', status: next.data?.status || 'scheduled',
+              });
+            } else {
+              const info = next.info;
+              onMatchClick?.({
+                matchKey: info.homeCode && info.awayCode ? `${info.homeCode}-${info.awayCode}` : null,
+                ...info,
+              });
+            }
           }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
@@ -339,9 +397,6 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
     }
 
     // ── R32 node: winner flag when decided, tiny dot otherwise ────────────────
-    // Once the winner is known, hovering the R32 result node shows the R16 preview.
-    const pairIdx = Math.floor(i / 2);
-    const r16Info = w ? buildR16Info(pairIdx, matchups, liveData, innerRounds) : null;
     nodes.push(
       <g key={`r32-${i}`} transform={`translate(${posR32.x},${posR32.y})`} style={{ cursor: 'pointer' }}
         onMouseEnter={e => r16Info ? onRoundEnter(e, r16Info) : onMatchEnter(e, match, d)}
@@ -374,30 +429,43 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
       </g>,
     );
 
-    // ── R16 dot (hover shows R16 matchup) ─────────────────────────────────────
+    // ── R16 node (hover shows R16 matchup, winner flag when decided) ─────────
     if (i % 2 === 0) {
-      const r16NodeInfo = buildR16Info(pairIdx, matchups, liveData, innerRounds);
       nodes.push(
-        <circle key={`r16-${i}`} cx={posR16.x} cy={posR16.y} r="11"
-          fill="#0D0D1A" stroke="#707070" strokeWidth="1.5"
+        <g key={`r16-${i}`} transform={`translate(${posR16.x},${posR16.y})`}
           opacity={onPath(i, 'r16') ? 1 : 0.06}
           style={{ cursor: 'pointer' }}
-          onMouseEnter={e => r16NodeInfo && onRoundEnter(e, r16NodeInfo)}
+          onMouseEnter={e => r16Info && onRoundEnter(e, r16Info)}
           onMouseMove={e => onMatchMove(e)}
           onMouseLeave={onLeave}
           onClick={e => {
             e.stopPropagation();
-            if (!r16NodeInfo) return;
+            if (!r16Info) return;
             onMatchClick?.({
-              matchKey: r16NodeInfo.homeCode && r16NodeInfo.awayCode
-                ? `${r16NodeInfo.homeCode}-${r16NodeInfo.awayCode}` : null,
-              ...r16NodeInfo,
+              matchKey: r16Info.homeCode && r16Info.awayCode
+                ? `${r16Info.homeCode}-${r16Info.awayCode}` : null,
+              ...r16Info,
             });
-          }} />,
+          }}>
+          {r16Info?.winner ? (
+            <>
+              <circle r="14" fill="#0F0F1A" stroke={teamCol(r16Info.winner)} strokeWidth="1.8" />
+              {flagUrl(r16Info.winner)
+                ? <image href={flagUrl(r16Info.winner)} x="-12" y="-12" width="24" height="24"
+                    clipPath="url(#r16WinClip)" preserveAspectRatio="xMidYMid slice" />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill="#C9A84C">{r16Info.winner}</text>
+              }
+            </>
+          ) : r16Info?.status === 'live' ? (
+            <circle r="6" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
+          ) : (
+            <circle r="11" fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />
+          )}
+        </g>,
       );
     }
 
-    // ── QF dot ────────────────────────────────────────────────────────────────
+    // ── QF node (winner flag when decided) ────────────────────────────────────
     if (i % 4 === 0) {
       const qfInfo = buildQFInfo(i, matchups, liveData, innerRounds);
       nodes.push(
@@ -411,12 +479,25 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
             if (!qfInfo) return;
             onMatchClick?.({ matchKey: getMatchKey(qfInfo), ...qfInfo });
           }}>
-          <circle r="11" fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />
+          {qfInfo?.winner ? (
+            <>
+              <circle r="13" fill="#0F0F1A" stroke={teamCol(qfInfo.winner)} strokeWidth="1.8" />
+              {flagUrl(qfInfo.winner)
+                ? <image href={flagUrl(qfInfo.winner)} x="-11" y="-11" width="22" height="22"
+                    clipPath="url(#qfWinClip)" preserveAspectRatio="xMidYMid slice" />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="7" fill="#C9A84C">{qfInfo.winner}</text>
+              }
+            </>
+          ) : qfInfo?.status === 'live' ? (
+            <circle r="6" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
+          ) : (
+            <circle r="11" fill="#0D0D1A" stroke="#707070" strokeWidth="1.5" />
+          )}
         </g>,
       );
     }
 
-    // ── SF dot (at inner end of line, adjacent to trophy) ────────────────────
+    // ── SF node (winner flag when decided, adjacent to trophy) ────────────────
     if (i % 8 === 0) {
       const sfDot = polar(R_CTR, fa(sfFrac));
       const sfInfo = buildSFInfo(i, matchups, liveData, innerRounds);
@@ -431,7 +512,20 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
             if (!sfInfo) return;
             onMatchClick?.({ matchKey: getMatchKey(sfInfo), ...sfInfo });
           }}>
-          <circle r="12" fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8" />
+          {sfInfo?.winner ? (
+            <>
+              <circle r="15" fill="#0F0F1A" stroke={teamCol(sfInfo.winner)} strokeWidth="2" />
+              {flagUrl(sfInfo.winner)
+                ? <image href={flagUrl(sfInfo.winner)} x="-13" y="-13" width="26" height="26"
+                    clipPath="url(#sfWinClip)" preserveAspectRatio="xMidYMid slice" />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill="#C9A84C">{sfInfo.winner}</text>
+              }
+            </>
+          ) : sfInfo?.status === 'live' ? (
+            <circle r="7" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
+          ) : (
+            <circle r="12" fill="#0D0D1A" stroke="#5A5A7A" strokeWidth="1.8" />
+          )}
         </g>,
       );
     }
@@ -481,6 +575,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           <clipPath id="r32WinClip">
             <circle r="16" />
           </clipPath>
+          <clipPath id="r16WinClip"><circle r="12" /></clipPath>
+          <clipPath id="qfWinClip"><circle r="11" /></clipPath>
+          <clipPath id="sfWinClip"><circle r="13" /></clipPath>
         </defs>
 
         <g>{lines}</g>
