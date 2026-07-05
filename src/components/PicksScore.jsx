@@ -1,4 +1,4 @@
-import { NAMES } from '../data/matchups';
+import { MATCHUPS } from '../data/matchups';
 
 function getWinner(d) {
   if (!d || d.status !== 'final') return null;
@@ -9,19 +9,31 @@ function getWinner(d) {
   return d.winner || null;
 }
 
-export default function PicksScore({ picks, liveData }) {
+export default function PicksScore({ picks, liveData, innerRounds, finalMatch }) {
   if (!picks || !liveData) return null;
 
-  let correct = 0;
-  let total = 0;
+  let correct = 0, total = 0;
+  const seen = new Set();
 
-  for (const [key, picked] of Object.entries(picks)) {
-    const [a, b] = key.split('-');
-    const d = liveData[key] || liveData[`${b}-${a}`];
-    if (!d || d.status !== 'final') continue;
+  function evalMatch(d) {
+    if (!d || d.status !== 'final' || !d.home || !d.away) return;
+    // Deduplicate: each match appears twice in inner round maps (both key orderings)
+    const ck = [d.home, d.away].sort().join('-');
+    if (seen.has(ck)) return;
+    seen.add(ck);
+    const picked = picks[`${d.home}-${d.away}`] || picks[`${d.away}-${d.home}`] || null;
+    if (!picked) return;
     total++;
     if (getWinner(d) === picked) correct++;
   }
+
+  MATCHUPS.forEach(m => evalMatch(liveData[`${m.home}-${m.away}`]));
+
+  for (const map of [innerRounds?.R16, innerRounds?.QF, innerRounds?.SF]) {
+    if (map) Object.values(map).forEach(evalMatch);
+  }
+
+  evalMatch(finalMatch);
 
   if (total === 0) return null;
 

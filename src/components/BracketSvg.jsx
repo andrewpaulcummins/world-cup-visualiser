@@ -276,7 +276,7 @@ const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
   rise: 48 + (i % 4) * 22,
 }));
 
-export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks, glowColor = '#C9A84C' }) {
+export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks, glowColor = '#C9A84C', predictedMode = false, predictedMatchups = null }) {
   const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
@@ -541,6 +541,16 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
         onMouseLeave={onLeave}
         onClick={e => {
           e.stopPropagation();
+          if (predictedMode) {
+            onMatchClick?.({
+              matchKey: `${match.home}-${match.away}`,
+              homeCode: match.home, awayCode: match.away,
+              homeLabel: NAMES[match.home] || match.home,
+              awayLabel: NAMES[match.away] || match.away,
+              stage: 'R32', status: 'scheduled',
+            });
+            return;
+          }
           if (!w) {
             // No winner yet — show R32 match for prediction
             onMatchClick?.({
@@ -610,6 +620,19 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           onMouseLeave={onLeave}
           onClick={e => {
             e.stopPropagation();
+            if (predictedMode && predictedMatchups) {
+              const pairIdx = Math.floor(i / 2);
+              const p = predictedMatchups.r16Pairs[pairIdx];
+              if (!p?.home || !p?.away) return;
+              onMatchClick?.({
+                matchKey: `r16_${pairIdx}`, predictedKey: `r16_${pairIdx}`,
+                homeCode: p.home, awayCode: p.away,
+                homeLabel: NAMES[p.home] || p.home,
+                awayLabel: NAMES[p.away] || p.away,
+                stage: 'R16', status: 'scheduled', isPredicted: true,
+              });
+              return;
+            }
             if (!r16Info) return;
             onMatchClick?.({
               matchKey: r16Info.homeCode && r16Info.awayCode
@@ -658,6 +681,19 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           onMouseLeave={onLeave}
           onClick={e => {
             e.stopPropagation();
+            if (predictedMode && predictedMatchups) {
+              const posIdx = Math.floor(i / 4);
+              const p = predictedMatchups.qfPairs[posIdx];
+              if (!p?.home || !p?.away) return;
+              onMatchClick?.({
+                matchKey: `qf_${posIdx}`, predictedKey: `qf_${posIdx}`,
+                homeCode: p.home, awayCode: p.away,
+                homeLabel: NAMES[p.home] || p.home,
+                awayLabel: NAMES[p.away] || p.away,
+                stage: 'QF', status: 'scheduled', isPredicted: true,
+              });
+              return;
+            }
             if (!qfInfo) return;
             onMatchClick?.({ matchKey: getMatchKey(qfInfo), ...qfInfo });
           }}>
@@ -703,6 +739,19 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           onMouseLeave={onLeave}
           onClick={e => {
             e.stopPropagation();
+            if (predictedMode && predictedMatchups) {
+              const posIdx = Math.floor(i / 8);
+              const p = predictedMatchups.sfPairs[posIdx];
+              if (!p?.home || !p?.away) return;
+              onMatchClick?.({
+                matchKey: `sf_${posIdx}`, predictedKey: `sf_${posIdx}`,
+                homeCode: p.home, awayCode: p.away,
+                homeLabel: NAMES[p.home] || p.home,
+                awayLabel: NAMES[p.away] || p.away,
+                stage: 'SF', status: 'scheduled', isPredicted: true,
+              });
+              return;
+            }
             if (!sfInfo) return;
             onMatchClick?.({ matchKey: getMatchKey(sfInfo), ...sfInfo });
           }}>
@@ -806,6 +855,20 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           />
         ))}
         <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324" />
+        {predictedMode && predictedMatchups?.finalPair?.home && predictedMatchups?.finalPair?.away && (
+          <circle cx={CX} cy={CY} r={50} fill="transparent" style={{ cursor: 'pointer' }}
+            onClick={e => {
+              e.stopPropagation();
+              const fp = predictedMatchups.finalPair;
+              onMatchClick?.({
+                matchKey: 'pred_final', predictedKey: 'pred_final',
+                homeCode: fp.home, awayCode: fp.away,
+                homeLabel: NAMES[fp.home] || fp.home,
+                awayLabel: NAMES[fp.away] || fp.away,
+                stage: 'F', status: 'scheduled', isPredicted: true,
+              });
+            }} />
+        )}
         <g>{nodes}</g>
         {finalScoreStr && (
           <>

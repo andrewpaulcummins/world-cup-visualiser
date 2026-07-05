@@ -28,6 +28,19 @@ export function usePredictions() {
   const getPick = (home, away) =>
     picks[`${home}-${away}`] || picks[`${away}-${home}`] || null;
 
+  const setPredictedPick = (key, winner) => {
+    setPicks(prev => {
+      const next = { ...prev };
+      if (!winner || prev[key] === winner) {
+        delete next[key];
+      } else {
+        next[key] = winner;
+      }
+      localStorage.setItem(KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const score = (() => {
     let correct = 0, total = 0;
     for (const [key, pick] of Object.entries(picks)) {
@@ -38,5 +51,5 @@ export function usePredictions() {
     return { correct, total };
   })();
 
-  return { picks, setPick, getPick, score };
+  return { picks, setPick, setPredictedPick, getPick, score };
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { MATCHUPS } from './data/matchups';
 import { useScores } from './hooks/useScores';
 import { useGoalDetector } from './hooks/useGoalDetector';
@@ -19,10 +19,11 @@ import FlagBackground from './components/FlagBackground';
 import Customise from './components/Customise';
 import { useCustomise } from './hooks/useCustomise';
 import { getTheme, getDim, DEFAULT_THEME } from './data/teamThemes';
+import { buildPredictedData } from './hooks/usePredictedBracket';
 
 export default function App() {
   const { liveData, innerRounds, schedule, recentResults, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
-  const { picks, setPick } = usePredictions();
+  const { picks, setPick, setPredictedPick } = usePredictions();
   const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
 
   const { settings, update: updateCustomise } = useCustomise();
@@ -30,11 +31,14 @@ export default function App() {
   const dim = getDim(theme.accent);
 
   const [view, setView]                   = useState('bracket');
+  const [bracketView, setBracketView]     = useState('actual');
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [goalToast, setGoalToast]             = useState(null);
   const [selectedTeam, setSelectedTeam]       = useState(null);
   const [modalInfo, setModalInfo]             = useState(null);
   const [elimMsg, setElimMsg]                 = useState(null);
+
+  const predictedData = useMemo(() => buildPredictedData(picks), [picks]);
 
   const previewWinner = new URLSearchParams(window.location.search).get('splash');
 
@@ -68,15 +72,19 @@ export default function App() {
   const handleMatchClick = useCallback((info) => {
     setTooltip(prev => ({ ...prev, visible: false }));
     setModalInfo(info);
-    fetchPicks(info.matchKey);
+    if (!info.isPredicted) fetchPicks(info.matchKey);
   }, [fetchPicks]);
 
   const handleModalPick = useCallback((pickedTeam) => {
     if (!modalInfo?.matchKey) return;
+    if (modalInfo.predictedKey) {
+      setPredictedPick(modalInfo.predictedKey, pickedTeam);
+      return;
+    }
     const [home, away] = modalInfo.matchKey.split('-');
     setPick(home, away, pickedTeam);
     submitPick(modalInfo.matchKey, pickedTeam);
-  }, [modalInfo, setPick, submitPick]);
+  }, [modalInfo, setPick, setPredictedPick, submitPick]);
 
   const handleModalClose = useCallback(() => setModalInfo(null), []);
 
@@ -86,7 +94,9 @@ export default function App() {
   }, []);
 
   const myPick = modalInfo?.matchKey
-    ? (picks?.[modalInfo.matchKey] || picks?.[`${modalInfo.awayCode}-${modalInfo.homeCode}`] || null)
+    ? (modalInfo.predictedKey
+        ? (picks?.[modalInfo.predictedKey] || null)
+        : (picks?.[modalInfo.matchKey] || picks?.[`${modalInfo.awayCode}-${modalInfo.homeCode}`] || null))
     : null;
 
   return (
@@ -113,11 +123,18 @@ export default function App() {
 
       {view === 'bracket' && (
         <>
+          <div className="bracket-view-toggle">
+            <button className={`bvt-btn${bracketView === 'actual' ? ' bvt-btn--active' : ''}`} onClick={() => setBracketView('actual')}>Actual</button>
+            <button className={`bvt-btn${bracketView === 'predicted' ? ' bvt-btn--active' : ''}`} onClick={() => setBracketView('predicted')}>My Bracket</button>
+          </div>
+          {bracketView === 'predicted' && (
+            <div className="predicted-banner">Tap any ring node to pick a winner</div>
+          )}
           <BracketSvg
             matchups={MATCHUPS}
-            liveData={liveData}
-            innerRounds={innerRounds}
-            finalMatch={finalMatch}
+            liveData={bracketView === 'predicted' ? predictedData.predictedLiveData : liveData}
+            innerRounds={bracketView === 'predicted' ? predictedData.predictedInnerRounds : innerRounds}
+            finalMatch={bracketView === 'predicted' ? predictedData.predictedFinalMatch : finalMatch}
             onMatchEnter={handleMatchEnter}
             onMatchMove={handleMatchMove}
             onLeave={handleLeave}
@@ -128,9 +145,11 @@ export default function App() {
             onEliminatedClick={handleEliminatedClick}
             picks={picks}
             glowColor={theme.bg[0]}
+            predictedMode={bracketView === 'predicted'}
+            predictedMatchups={bracketView === 'predicted' ? predictedData : null}
           />
           <Legend />
-          <PicksScore picks={picks} liveData={liveData} />
+          <PicksScore picks={picks} liveData={liveData} innerRounds={innerRounds} finalMatch={finalMatch} />
         </>
       )}
 

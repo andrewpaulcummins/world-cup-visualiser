@@ -1024,6 +1024,33 @@ html, body {
   background: rgba(201,168,76,0.08);
 }
 
+/* ── Predicted bracket toggle ─────────────────────────────── */
+.bracket-view-toggle {
+  display: flex; justify-content: center; gap: 4px;
+  padding: 8px 20px 0;
+}
+.bvt-btn {
+  background: none;
+  border: 1px solid var(--node-border);
+  color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 5px 16px; border-radius: 20px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.bvt-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.bvt-btn--active {
+  border-color: var(--gold); color: var(--gold);
+  background: rgba(201,168,76,0.08);
+}
+.predicted-banner {
+  text-align: center;
+  font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 6px 0 0;
+  opacity: 0.7;
+}
+
 /* ── Group Stage ───────────────────────────────────────────── */
 .gs-wrap { max-width: 1100px; margin: 0 auto; padding: 16px 16px 40px; }
 
@@ -1236,6 +1263,10 @@ html, body {
 .pm-community { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 16px; }
 .pm-community-title {
   text-align: center; font-size: 0.72rem; color: #555; margin-bottom: 14px;
+}
+.pm-community-title--predicted {
+  color: var(--gold-dim); letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 0.65rem; margin-bottom: 0;
 }
 .pm-bars { display: flex; flex-direction: column; gap: 10px; }
 .pm-bar-row { display: flex; align-items: center; gap: 10px; }
