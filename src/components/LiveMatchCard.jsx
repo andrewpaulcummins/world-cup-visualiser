@@ -94,6 +94,42 @@ function NextUpCard({ match }) {
   );
 }
 
+// ── Recent results ──────────────────────────────────────────────────────────
+function RecentResultsList({ results }) {
+  if (!results?.length) return null;
+  return (
+    <div className="lmc-results">
+      <div className="lmc-results-title">Recent Results</div>
+      {results.map((m, idx) => {
+        const isPen = m.duration === 'PENALTY_SHOOTOUT' && m.penHome != null;
+        return (
+          <div key={idx} className="lmc-result-row">
+            <span className="lmc-result-round">{m.roundLabel}</span>
+            <div className="lmc-result-match">
+              <div className={`lmc-result-team${m.winner === m.home ? ' lmc-result-team--win' : ''}`}>
+                <TeamFlag code={m.home} />
+                <span className="lmc-result-name">{teamName(m.home)}</span>
+              </div>
+              <div className="lmc-result-score">
+                <div className="lmc-result-score-main">
+                  <span className={m.winner === m.home ? 'lmc-result-score--win' : 'lmc-result-score--lose'}>{m.homeScore}</span>
+                  <span className="lmc-sep">–</span>
+                  <span className={m.winner === m.away ? 'lmc-result-score--win' : 'lmc-result-score--lose'}>{m.awayScore}</span>
+                </div>
+                {isPen && <div className="lmc-result-pens">(pens. {m.penHome} – {m.penAway})</div>}
+              </div>
+              <div className={`lmc-result-team lmc-result-team--right${m.winner === m.away ? ' lmc-result-team--win' : ''}`}>
+                <span className="lmc-result-name">{teamName(m.away)}</span>
+                <TeamFlag code={m.away} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Full upcoming list ───────────────────────────────────────────────────────
 function ScheduleList({ matches }) {
   const [open, setOpen] = useState(false);
@@ -183,7 +219,7 @@ function FinalCard({ match }) {
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
-export default function LiveMatchCard({ liveData, schedule, finalMatch }) {
+export default function LiveMatchCard({ liveData, schedule, recentResults, finalMatch }) {
   const liveMatches = MATCHUPS
     .map(m => ({ m, d: liveData[`${m.home}-${m.away}`] }))
     .filter(({ d }) => d?.status === 'live');
@@ -197,13 +233,14 @@ export default function LiveMatchCard({ liveData, schedule, finalMatch }) {
   const restUpcoming = upcoming.slice(1);
 
   const hasFinal = finalMatch && (finalMatch.home || finalMatch.away);
-  if (!liveMatches.length && !nextUp && !restUpcoming.length && !hasFinal) return null;
+  if (!liveMatches.length && !nextUp && !restUpcoming.length && !hasFinal && !recentResults?.length) return null;
 
   return (
     <div className="live-section">
       {hasFinal && <FinalCard match={finalMatch} />}
       {liveMatches.map(({ m, d }) => <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} />)}
       {nextUp && <NextUpCard match={nextUp} />}
+      <RecentResultsList results={recentResults} />
       <ScheduleList matches={restUpcoming} />
     </div>
   );

@@ -21,7 +21,7 @@ import { useCustomise } from './hooks/useCustomise';
 import { getTheme, getDim, DEFAULT_THEME } from './data/teamThemes';
 
 export default function App() {
-  const { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
+  const { liveData, innerRounds, schedule, recentResults, groupStage, finalMatch, tournamentWinner, lastUpdated, apiStatus } = useScores();
   const { picks, setPick } = usePredictions();
   const { data: communityData, loading: communityLoading, fetchPicks, submitPick } = useCommunityPicks();
 
@@ -117,6 +117,7 @@ export default function App() {
             matchups={MATCHUPS}
             liveData={liveData}
             innerRounds={innerRounds}
+            finalMatch={finalMatch}
             onMatchEnter={handleMatchEnter}
             onMatchMove={handleMatchMove}
             onLeave={handleLeave}
@@ -135,7 +136,7 @@ export default function App() {
 
       {view === 'groups' && <GroupStage groupStage={groupStage} />}
 
-      <LiveMatchCard liveData={liveData} schedule={schedule} finalMatch={finalMatch} />
+      <LiveMatchCard liveData={liveData} schedule={schedule} recentResults={recentResults} finalMatch={finalMatch} />
       <Tooltip tooltip={tooltip} />
       {modalInfo && (
         <PredictModal

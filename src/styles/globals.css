@@ -656,6 +656,78 @@ html, body {
 .lmc-badge--next { color: var(--gold); animation: none; }
 .lmc-vs { font-size: 0.9rem; color: var(--text-dim); padding: 0 4px; }
 
+/* ── Recent results ── */
+.lmc-results {
+  background: #0F0F1A;
+  border: 1px solid var(--node-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.lmc-results-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--node-border);
+}
+.lmc-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.lmc-result-row:last-child { border-bottom: none; }
+.lmc-result-round {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  width: 68px;
+  flex-shrink: 0;
+}
+.lmc-result-match {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+}
+.lmc-result-team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.lmc-result-team--right { flex-direction: row-reverse; }
+.lmc-result-team--win .lmc-result-name { color: var(--text); font-weight: 600; }
+.lmc-result-name {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lmc-result-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 64px;
+}
+.lmc-result-score-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.lmc-result-score--win { color: var(--text); }
+.lmc-result-score--lose { color: var(--text-dim); }
+.lmc-result-pens { font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.02em; }
+.lmc-results .lmc-flag { width: 22px; height: 16px; border-radius: 2px; }
+.lmc-results .lmc-flag-emoji { font-size: 1rem; }
+
 /* ── Schedule list ── */
 .lmc-schedule {
   background: #0F0F1A;

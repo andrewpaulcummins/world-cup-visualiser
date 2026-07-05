@@ -78,16 +78,15 @@ function buildR16Info(pairIdx, matchupsArr, ld, innerRounds) {
   if (w0 && w1 && r16) fix = r16[`${w0}-${w1}`] || r16[`${w1}-${w0}`];
   const homeLabel = w0 ? (NAMES[w0] || w0) : `W. ${m0.home}/${m0.away}`;
   const awayLabel = w1 ? (NAMES[w1] || w1) : `W. ${m1.home}/${m1.away}`;
-  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
-  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const hs  = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as  = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const pH  = fix ? (fix.home === w0 ? fix.penHome   : fix.penAway)   : null;
+  const pA  = fix ? (fix.home === w0 ? fix.penAway   : fix.penHome)   : null;
   return {
-    stage: 'R16',
-    homeCode: w0, awayCode: w1,
-    homeLabel, awayLabel,
-    utcDate: fix?.utcDate || null,
-    status: fix?.status || 'scheduled',
-    homeScore: hs, awayScore: as,
-    winner: fix?.winner || null,
+    stage: 'R16', homeCode: w0, awayCode: w1, homeLabel, awayLabel,
+    utcDate: fix?.utcDate || null, status: fix?.status || 'scheduled',
+    homeScore: hs, awayScore: as, winner: fix?.winner || null,
+    penHome: pH, penAway: pA, duration: fix?.duration || 'REGULAR',
   };
 }
 
@@ -102,11 +101,14 @@ function buildQFInfo(i, matchupsArr, ld, innerRounds) {
   if (w0 && w1 && qfMap) fix = qfMap[`${w0}-${w1}`] || qfMap[`${w1}-${w0}`];
   const homeLabel = w0 ? (NAMES[w0] || w0) : 'TBD';
   const awayLabel = w1 ? (NAMES[w1] || w1) : 'TBD';
-  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
-  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const hs  = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as  = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const pH  = fix ? (fix.home === w0 ? fix.penHome   : fix.penAway)   : null;
+  const pA  = fix ? (fix.home === w0 ? fix.penAway   : fix.penHome)   : null;
   return { stage: 'QF', homeCode: w0, awayCode: w1, homeLabel, awayLabel,
            utcDate: fix?.utcDate || null, status: fix?.status || 'scheduled',
-           homeScore: hs, awayScore: as, winner: fix?.winner || null };
+           homeScore: hs, awayScore: as, winner: fix?.winner || null,
+           penHome: pH, penAway: pA, duration: fix?.duration || 'REGULAR' };
 }
 
 // SF: two QF winners feed into one SF slot (i%8===0)
@@ -120,11 +122,24 @@ function buildSFInfo(i, matchupsArr, ld, innerRounds) {
   if (w0 && w1 && sfMap) fix = sfMap[`${w0}-${w1}`] || sfMap[`${w1}-${w0}`];
   const homeLabel = w0 ? (NAMES[w0] || w0) : 'TBD';
   const awayLabel = w1 ? (NAMES[w1] || w1) : 'TBD';
-  const hs = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
-  const as = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const hs  = fix ? (fix.home === w0 ? fix.homeScore : fix.awayScore) : null;
+  const as  = fix ? (fix.home === w0 ? fix.awayScore : fix.homeScore) : null;
+  const pH  = fix ? (fix.home === w0 ? fix.penHome   : fix.penAway)   : null;
+  const pA  = fix ? (fix.home === w0 ? fix.penAway   : fix.penHome)   : null;
   return { stage: 'SF', homeCode: w0, awayCode: w1, homeLabel, awayLabel,
            utcDate: fix?.utcDate || null, status: fix?.status || 'scheduled',
-           homeScore: hs, awayScore: as, winner: fix?.winner || null };
+           homeScore: hs, awayScore: as, winner: fix?.winner || null,
+           penHome: pH, penAway: pA, duration: fix?.duration || 'REGULAR' };
+}
+
+// Format a score for an inner ring label, including pens if applicable.
+function innerScoreText(info) {
+  if (!info || info.homeScore == null || info.awayScore == null) return null;
+  if (info.status !== 'final' && info.status !== 'live') return null;
+  const isPen = info.duration === 'PENALTY_SHOOTOUT' && info.penHome != null;
+  return isPen
+    ? `${info.homeScore}(${info.penHome})–${info.awayScore}(${info.penAway})`
+    : `${info.homeScore}–${info.awayScore}`;
 }
 
 function getTeamIdx(matchups, code) {
@@ -152,6 +167,24 @@ function makeInnerInfo(stage, entry) {
     homeScore: entry.homeScore, awayScore: entry.awayScore,
     winner:    entry.winner,
   };
+}
+
+// Returns true if the team hasn't lost any match yet (still in the tournament).
+function isTeamStillAlive(code, matchupsArr, ld, ir, fm) {
+  if (!code) return false;
+  const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
+  if (idx < 0) return false;
+  const r16e = findTeamInMap(ir?.R16, code);
+  if (r16e?.winner && r16e.winner !== code) return false;
+  const qfe  = findTeamInMap(ir?.QF, code);
+  if (qfe?.winner  && qfe.winner  !== code) return false;
+  const sfe  = findTeamInMap(ir?.SF, code);
+  if (sfe?.winner  && sfe.winner  !== code) return false;
+  if (fm?.winner && fm.winner !== code && (fm.home === code || fm.away === code)) return false;
+  const d = getMatchData(ld, matchupsArr[idx].home, matchupsArr[idx].away);
+  const w = getWinner(d);
+  if (w && w !== code) return false;
+  return true;
 }
 
 // Returns how far a team has advanced: 0=lost/unknown R32, 1=reached R16, 2=reached QF, 3=reached SF, 4=in Final
@@ -209,9 +242,29 @@ function findNextMatchInfo(code, matchupsArr, ld, ir) {
   const match = matchupsArr[idx];
   const d = getMatchData(ld, match.home, match.away);
   const gsWinner = getWinner(d);
-  if (gsWinner !== code) return { type: 'match', match, data: d };
+  if (gsWinner !== code) {
+    // If the R32 match looks unplayed (seed data) but R16 hasn't loaded yet,
+    // don't open the modal — we can't determine the real next game yet.
+    const r16Loaded = ir?.R16 && Object.keys(ir.R16).length > 0;
+    if (d?.status === 'scheduled' && !r16Loaded) return null;
+    return { type: 'match', match, data: d };
+  }
   return null; // won R32 but R16 not yet scheduled
 }
+
+// Precomputed spark particles for champion outer-ring burst
+const CHAMPION_SPARKS = Array.from({ length: 20 }, (_, k) => {
+  const a = (k / 20) * Math.PI * 2 + (k % 3) * 0.15;
+  const dist = 36 + (k % 5) * 10; // 36 → 76 px
+  return {
+    tx: Math.cos(a) * dist,
+    ty: Math.sin(a) * dist,
+    r:  1.2 + (k % 4) * 0.8,      // 1.2 → 4.0
+    fill: ['#FFD700','#FFF5CC','#FFA500','#FFFFFF'][k % 4],
+    dur: `${0.55 + (k % 4) * 0.18}s`,
+    delay: `${((k * 0.09) % 0.8).toFixed(2)}s`,
+  };
+});
 
 // Deterministic particle ring around trophy
 const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
@@ -223,19 +276,22 @@ const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
   rise: 48 + (i % 4) * 22,
 }));
 
-export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks, glowColor = '#C9A84C' }) {
+export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch, onMatchEnter, onMatchMove, onLeave, onRoundEnter, onMatchClick, selectedTeam, onTeamSelect, onEliminatedClick, picks, glowColor = '#C9A84C' }) {
   const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
   const adv     = dimmed ? getTeamAdvancement(selectedTeam, matchups, liveData, innerRounds) : -1;
+  // If the team is still alive after winning R32, show their full potential path to the final
+  const alive        = dimmed ? isTeamStillAlive(selectedTeam, matchups, liveData, innerRounds, finalMatch) : false;
+  const effectiveAdv = (alive && adv >= 1) ? 4 : adv;
 
   function onPath(i, level) {
     if (!dimmed) return true;
     if (level === 'match')  return i === teamIdx;
-    if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2) && adv >= 1;
-    if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4) && adv >= 2;
-    if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8) && adv >= 3;
-    if (level === 'center') return Math.floor(i / 8) === Math.floor(teamIdx / 8) && adv >= 4;
+    if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2) && effectiveAdv >= 1;
+    if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4) && effectiveAdv >= 2;
+    if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8) && effectiveAdv >= 3;
+    if (level === 'center') return Math.floor(i / 8) === Math.floor(teamIdx / 8) && effectiveAdv >= 4;
     return false;
   }
   const lines = [];
@@ -362,21 +418,25 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── Team nodes ────────────────────────────────────────────────────────────
     function TeamNode({ pos, code, isWin, nodeKey }) {
-      // Check if team was eliminated in any inner round (R16/QF/SF)
+      // Check if team was eliminated in any inner round (R16/QF/SF) or the Final
       const r16e = findTeamInMap(innerRounds?.R16, code);
       const qfe  = findTeamInMap(innerRounds?.QF,  code);
       const sfe  = findTeamInMap(innerRounds?.SF,  code);
+      const lostFinal = finalMatch?.winner && finalMatch.winner !== code &&
+        (finalMatch.home === code || finalMatch.away === code);
       const lostInner =
         (r16e?.winner != null && r16e.winner !== code) ||
         (qfe?.winner  != null && qfe.winner  !== code) ||
-        (sfe?.winner  != null && sfe.winner  !== code);
+        (sfe?.winner  != null && sfe.winner  !== code) ||
+        lostFinal;
+      const isChampion = finalMatch?.status === 'final' && finalMatch.winner === code;
       const isLose = (status === 'final' && w !== null && w !== code) || lostInner;
       // Suppress R32-winner styling for teams that were later eliminated
       const win = isWin && !lostInner;
       const lblAngle = Math.atan2(pos.y - CY, pos.x - CX);
       const lx = Math.cos(lblAngle) * 33;
       const ly = Math.sin(lblAngle) * 33;
-      const border = win ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
+      const border = isChampion ? '#FFD700' : win ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
       const isSelected = selectedTeam === code;
       const nodeOp = dimmed ? (isSelected ? 1 : onPath(i, 'match') ? 0.5 : 0.06) : 1;
       const matchKey = `${match.home}-${match.away}`;
@@ -390,24 +450,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           onClick={e => {
             e.stopPropagation();
             if (isLose) { onEliminatedClick?.(NAMES[code] || code); return; }
+            // Toggle team selection to highlight path — modal opens via the inner ring nodes
             onTeamSelect?.(isSelected ? null : code);
-            const next = findNextMatchInfo(code, matchups, liveData, innerRounds);
-            if (!next) return;
-            if (next.type === 'match') {
-              onMatchClick?.({
-                matchKey: `${next.match.home}-${next.match.away}`,
-                homeCode: next.match.home, awayCode: next.match.away,
-                homeLabel: NAMES[next.match.home] || next.match.home,
-                awayLabel: NAMES[next.match.away] || next.match.away,
-                stage: 'R32', status: next.data?.status || 'scheduled',
-              });
-            } else {
-              const info = next.info;
-              onMatchClick?.({
-                matchKey: info.homeCode && info.awayCode ? `${info.homeCode}-${info.awayCode}` : null,
-                ...info,
-              });
-            }
           }}>
           <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={win ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
@@ -419,9 +463,34 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           }
           {isLose && <circle r="22" fill="rgba(0,0,0,0.35)" />}
           {isPick && <circle r="27" fill="none" stroke="#C9A84C" strokeWidth="2" strokeDasharray="4 3" opacity="0.9" />}
+          {isChampion && (<>
+            {/* Burst shockwave ring */}
+            <circle r="24" fill="none" stroke="#FFD700" strokeWidth="3">
+              <animate attributeName="r" values="24;58;24" dur="1.6s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.9;0;0.9" dur="1.6s" repeatCount="indefinite" />
+              <animate attributeName="stroke-width" values="3;0.5;3" dur="1.6s" repeatCount="indefinite" />
+            </circle>
+            {/* Pulsing gold border glow */}
+            <circle r="26" fill="none" stroke="#FFD700" strokeWidth="2.5" filter="url(#glow)">
+              <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite" />
+            </circle>
+            {/* Flying spark particles */}
+            {CHAMPION_SPARKS.map((p, k) => (
+              <circle key={k} r={p.r} fill={p.fill} cx="0" cy="0">
+                <animateTransform attributeName="transform" type="translate"
+                  from="0 0" to={`${p.tx} ${p.ty}`}
+                  dur={p.dur} begin={p.delay} repeatCount="indefinite"
+                  calcMode="spline" keyTimes="0;1" keySplines="0.1 0 0.5 1" />
+                <animate attributeName="opacity" values="1;0.6;0"
+                  dur={p.dur} begin={p.delay} repeatCount="indefinite" />
+                <animate attributeName="r" values={`${p.r};${p.r * 0.3};0`}
+                  dur={p.dur} begin={p.delay} repeatCount="indefinite" />
+              </circle>
+            ))}
+          </>)}
           <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central"
             fontSize="8" fontFamily="Inter, sans-serif"
-            fill={win ? '#3A8FFF' : isLose ? '#3A3A4A' : '#888070'} fontWeight={win ? '600' : '400'}>
+            fill={isChampion ? '#FFD700' : win ? '#3A8FFF' : isLose ? '#3A3A4A' : '#888070'} fontWeight={win || isChampion ? '600' : '400'}>
             {code}
           </text>
         </g>
@@ -472,13 +541,46 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         onMouseLeave={onLeave}
         onClick={e => {
           e.stopPropagation();
-          onMatchClick?.({
-            matchKey: `${match.home}-${match.away}`,
-            homeCode: match.home, awayCode: match.away,
-            homeLabel: NAMES[match.home] || match.home,
-            awayLabel: NAMES[match.away] || match.away,
-            stage: 'R32', status,
-          });
+          if (!w) {
+            // No winner yet — show R32 match for prediction
+            onMatchClick?.({
+              matchKey: `${match.home}-${match.away}`,
+              homeCode: match.home, awayCode: match.away,
+              homeLabel: NAMES[match.home] || match.home,
+              awayLabel: NAMES[match.away] || match.away,
+              stage: 'R32', status,
+            });
+          } else {
+            // Winner decided — check if eliminated in a later round
+            const r16e = findTeamInMap(innerRounds?.R16, w);
+            const qfe  = findTeamInMap(innerRounds?.QF,  w);
+            const sfe  = findTeamInMap(innerRounds?.SF,  w);
+            const lostFinalR32 = finalMatch?.winner && finalMatch.winner !== w &&
+              (finalMatch.home === w || finalMatch.away === w);
+            const lostLater =
+              (r16e?.winner != null && r16e.winner !== w) ||
+              (qfe?.winner  != null && qfe.winner  !== w) ||
+              (sfe?.winner  != null && sfe.winner  !== w) ||
+              lostFinalR32;
+            if (lostLater) { onEliminatedClick?.(NAMES[w] || w); return; }
+            const next = findNextMatchInfo(w, matchups, liveData, innerRounds);
+            if (!next) return;
+            if (next.type === 'match') {
+              onMatchClick?.({
+                matchKey: `${next.match.home}-${next.match.away}`,
+                homeCode: next.match.home, awayCode: next.match.away,
+                homeLabel: NAMES[next.match.home] || next.match.home,
+                awayLabel: NAMES[next.match.away] || next.match.away,
+                stage: 'R32', status: next.data?.status || 'scheduled',
+              });
+            } else {
+              const info = next.info;
+              onMatchClick?.({
+                matchKey: info.homeCode && info.awayCode ? `${info.homeCode}-${info.awayCode}` : null,
+                ...info,
+              });
+            }
+          }
         }}>
         {w ? (
           <>
@@ -531,6 +633,18 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           )}
         </g>,
       );
+      const r16Label = innerScoreText(r16Info);
+      if (r16Label) {
+        const sPos = polar(R_R16 + 32, fa(r16Frac));
+        nodes.push(
+          <text key={`r16score-${i}`} x={sPos.x} y={sPos.y}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize="9" fontFamily="Inter, sans-serif" fontWeight="700"
+            fill={matchColor(r16Info.status)} opacity={r16Op} pointerEvents="none">
+            {r16Label}
+          </text>
+        );
+      }
     }
 
     // ── QF node (winner flag when decided) ────────────────────────────────────
@@ -563,6 +677,18 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           )}
         </g>,
       );
+      const qfLabel = innerScoreText(qfInfo);
+      if (qfLabel) {
+        const sPos = polar(R_QF + 30, fa(qfFrac));
+        nodes.push(
+          <text key={`qfscore-${i}`} x={sPos.x} y={sPos.y}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize="9" fontFamily="Inter, sans-serif" fontWeight="700"
+            fill={matchColor(qfInfo.status)} opacity={qfOp} pointerEvents="none">
+            {qfLabel}
+          </text>
+        );
+      }
     }
 
     // ── SF node (winner flag when decided, adjacent to trophy) ────────────────
@@ -596,8 +722,31 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           )}
         </g>,
       );
+      const sfLabel = innerScoreText(sfInfo);
+      if (sfLabel) {
+        const sPos = polar(R_CTR + 38, fa(sfFrac));
+        nodes.push(
+          <text key={`sfscore-${i}`} x={sPos.x} y={sPos.y}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize="9" fontFamily="Inter, sans-serif" fontWeight="700"
+            fill={matchColor(sfInfo.status)} opacity={sfOp} pointerEvents="none">
+            {sfLabel}
+          </text>
+        );
+      }
     }
   });
+
+  const _fm = finalMatch;
+  const showFinalScore = _fm &&
+    (_fm.status === 'live' || _fm.status === 'final') &&
+    _fm.homeScore != null && _fm.awayScore != null;
+  const finalScoreStr = showFinalScore
+    ? (_fm.duration === 'PENALTY_SHOOTOUT' && _fm.penHome != null
+        ? `${_fm.homeScore}(${_fm.penHome}) – ${_fm.awayScore}(${_fm.penAway})`
+        : `${_fm.homeScore} – ${_fm.awayScore}`)
+    : null;
+  const finalScoreColor = _fm?.status === 'live' ? LIVE_GREEN : '#C9A84C';
 
   return (
     <div className="bracket-wrap" {...pinchHandlers}>
@@ -658,6 +807,36 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
         ))}
         <image href={`${import.meta.env.BASE_URL}trophy.webp`} x="320" y="288" width="261" height="324" />
         <g>{nodes}</g>
+        {finalScoreStr && (
+          <>
+            {_fm?.status === 'live' && (
+              <g pointerEvents="none">
+                <circle cx={CX - 18} cy={CY - 148} r="3.5" fill="#FF3B3B">
+                  <animate attributeName="opacity" values="1;0.15;1" dur="1.4s" repeatCount="indefinite" />
+                </circle>
+                <text x={CX - 11} y={CY - 148} dominantBaseline="central"
+                  fontSize="9" fontFamily="Inter, sans-serif" fontWeight="700"
+                  letterSpacing="0.18em" fill="#FF3B3B">
+                  LIVE
+                  <animate attributeName="opacity" values="1;0.15;1" dur="1.4s" repeatCount="indefinite" />
+                </text>
+              </g>
+            )}
+            <text x={CX} y={CY - 108} textAnchor="middle" dominantBaseline="central"
+              fontSize="78" fontFamily="Bebas Neue, sans-serif"
+              fill={finalScoreColor} opacity="0.18" pointerEvents="none">
+              {finalScoreStr}
+            </text>
+            <text x={CX} y={CY - 108} textAnchor="middle" dominantBaseline="central"
+              fontSize="78" fontFamily="Bebas Neue, sans-serif"
+              fill={finalScoreColor} filter="url(#glow)" pointerEvents="none">
+              {finalScoreStr}
+              {_fm?.status === 'live' && (
+                <animate attributeName="opacity" values="0.92;0.55;0.92" dur="2s" repeatCount="indefinite" />
+              )}
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );

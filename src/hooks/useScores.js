@@ -191,6 +191,7 @@ export function useScores() {
   const [liveData, setLiveData]             = useState(buildSeedData);
   const [innerRounds, setInnerRounds]       = useState({ R16: {} });
   const [schedule, setSchedule]             = useState([]);
+  const [recentResults, setRecentResults]   = useState([]);
   const [groupStage, setGroupStage]         = useState({});
   const [finalMatch, setFinalMatch]         = useState(null);
   const [tournamentWinner, setTournamentWinner] = useState(null);
@@ -224,6 +225,7 @@ export function useScores() {
       const qfMap      = {};
       const sfMap      = {};
       const scheduleArr = [];
+      const resultsArr  = [];
       const groupData  = {};
       let   finalMatchData = null;
 
@@ -259,18 +261,20 @@ export function useScores() {
         // QF fixtures
         if (isQFRound(round) && home && away) {
           const winner = homeWon ? home : awayWon ? away : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           qfMap[`${home}-${away}`] = e;
-          qfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
+          qfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
+          if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Quarter-Final', winner, penHome, penAway, duration });
           continue;
         }
 
         // SF fixtures
         if (isSFRound(round) && home && away) {
           const winner = homeWon ? home : awayWon ? away : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           sfMap[`${home}-${away}`] = e;
-          sfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
+          sfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
+          if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Semi-Final', winner, penHome, penAway, duration });
           continue;
         }
 
@@ -279,15 +283,17 @@ export function useScores() {
           const winner = homeWon ? home : awayWon ? away : null;
           if (winner) setTournamentWinner(winner);
           finalMatchData = { home, away, matchId: f.matchId, utcDate, status, homeScore, awayScore, penHome, penAway, winner, minuteStr, duration };
+          if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Final', winner, penHome, penAway, duration });
           continue;
         }
 
         // R16 fixtures → inner-ring tooltip data
         if (isR16Round(round) && home && away) {
           const winner = homeWon ? home : awayWon ? away : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           r16Map[`${home}-${away}`] = e;
-          r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore };
+          r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
+          if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Round of 16', winner, penHome, penAway, duration });
           continue;
         }
 
@@ -305,9 +311,12 @@ export function useScores() {
           homeScore: awayScore, awayScore: homeScore,
           penHome: penAway, penAway: penHome,
         };
+        if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Round of 32', winner, penHome, penAway, duration });
       }
 
       scheduleArr.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+      resultsArr.sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate));
+      setRecentResults(resultsArr.slice(0, 5));
 
       const groupStageResult = {};
       for (const [letter, g] of Object.entries(groupData)) {
@@ -337,5 +346,5 @@ export function useScores() {
     return () => clearInterval(id);
   }, [fetchScores]);
 
-  return { liveData, innerRounds, schedule, groupStage, finalMatch, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
+  return { liveData, innerRounds, schedule, recentResults, groupStage, finalMatch, tournamentWinner, lastUpdated, fetchScores, apiStatus, setApiStatus };
 }
