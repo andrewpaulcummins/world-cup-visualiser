@@ -131,45 +131,86 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
-// Returns how far a team has advanced: 0=lost R32, 1=reached R16, 2=reached QF, 3=reached SF, 4=in Final
+// Search a round map for any entry that includes the given team code.
+// Returns the first matching entry, or null.
+function findTeamInMap(map, code) {
+  if (!map || !code) return null;
+  for (const entry of Object.values(map)) {
+    if (entry.home === code || entry.away === code) return entry;
+  }
+  return null;
+}
+
+function makeInnerInfo(stage, entry) {
+  return {
+    stage,
+    homeCode:  entry.home, awayCode:  entry.away,
+    homeLabel: NAMES[entry.home] || entry.home,
+    awayLabel: NAMES[entry.away] || entry.away,
+    utcDate:   entry.utcDate,
+    status:    entry.status,
+    homeScore: entry.homeScore, awayScore: entry.awayScore,
+    winner:    entry.winner,
+  };
+}
+
+// Returns how far a team has advanced: 0=lost/unknown R32, 1=reached R16, 2=reached QF, 3=reached SF, 4=in Final
+// Searches inner-round maps directly so it works even when R32 liveData is incomplete.
 function getTeamAdvancement(code, matchupsArr, ld, ir) {
   if (!code) return -1;
   const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
   if (idx < 0) return -1;
+
+  const sfEntry = findTeamInMap(ir?.SF, code);
+  if (sfEntry) return sfEntry.winner === code ? 4 : 3;
+
+  const qfEntry = findTeamInMap(ir?.QF, code);
+  if (qfEntry) return qfEntry.winner === code ? 3 : 2;
+
+  const r16Entry = findTeamInMap(ir?.R16, code);
+  if (r16Entry) return r16Entry.winner === code ? 2 : 1;
+
+  // Fall back to R32 liveData check
   const d = getMatchData(ld, matchupsArr[idx].home, matchupsArr[idx].away);
-  if (getWinner(d) !== code) return 0;
-  const r16Info = buildR16Info(Math.floor(idx / 2), matchupsArr, ld, ir);
-  if (!r16Info?.winner || r16Info.winner !== code) return 1;
-  const qfInfo = buildQFInfo(Math.floor(idx / 4) * 4, matchupsArr, ld, ir);
-  if (!qfInfo?.winner || qfInfo.winner !== code) return 2;
-  const sfInfo = buildSFInfo(Math.floor(idx / 8) * 8, matchupsArr, ld, ir);
-  if (!sfInfo?.winner || sfInfo.winner !== code) return 3;
-  return 4;
+  return getWinner(d) === code ? 1 : 0;
 }
 
+// Returns the team's next/current match so the click modal shows the right game.
+// Prioritises inner-round maps over R32 liveData so it works even when R32 data is incomplete.
 function findNextMatchInfo(code, matchupsArr, ld, ir) {
   const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
   if (idx < 0) return null;
+
+  // SF
+  const sfEntry = findTeamInMap(ir?.SF, code);
+  if (sfEntry) {
+    if (sfEntry.winner && sfEntry.winner !== code) return null; // eliminated
+    if (!sfEntry.winner) return { type: 'inner', info: makeInnerInfo('SF', sfEntry) };
+    return null; // won SF → in Final
+  }
+
+  // QF
+  const qfEntry = findTeamInMap(ir?.QF, code);
+  if (qfEntry) {
+    if (qfEntry.winner && qfEntry.winner !== code) return null;
+    if (!qfEntry.winner) return { type: 'inner', info: makeInnerInfo('QF', qfEntry) };
+    return null; // won QF, SF not yet in map
+  }
+
+  // R16
+  const r16Entry = findTeamInMap(ir?.R16, code);
+  if (r16Entry) {
+    if (r16Entry.winner && r16Entry.winner !== code) return null;
+    if (!r16Entry.winner) return { type: 'inner', info: makeInnerInfo('R16', r16Entry) };
+    return null; // won R16, QF not yet in map
+  }
+
+  // R32 fallback
   const match = matchupsArr[idx];
   const d = getMatchData(ld, match.home, match.away);
   const gsWinner = getWinner(d);
   if (gsWinner !== code) return { type: 'match', match, data: d };
-  const pairIdx = Math.floor(idx / 2);
-  const r16Info = buildR16Info(pairIdx, matchupsArr, ld, ir);
-  if (!r16Info) return null;
-  if (r16Info.winner && r16Info.winner !== code) return null;
-  if (!r16Info.winner) return { type: 'inner', info: r16Info };
-  const qfI = Math.floor(idx / 4) * 4;
-  const qfInfo = buildQFInfo(qfI, matchupsArr, ld, ir);
-  if (!qfInfo) return null;
-  if (qfInfo.winner && qfInfo.winner !== code) return null;
-  if (!qfInfo.winner) return { type: 'inner', info: qfInfo };
-  const sfI = Math.floor(idx / 8) * 8;
-  const sfInfo = buildSFInfo(sfI, matchupsArr, ld, ir);
-  if (!sfInfo) return null;
-  if (sfInfo.winner && sfInfo.winner !== code) return null;
-  if (!sfInfo.winner) return { type: 'inner', info: sfInfo };
-  return null;
+  return null; // won R32 but R16 not yet scheduled
 }
 
 // Deterministic particle ring around trophy
@@ -321,11 +362,21 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
 
     // ── Team nodes ────────────────────────────────────────────────────────────
     function TeamNode({ pos, code, isWin, nodeKey }) {
-      const isLose = status === 'final' && w !== null && w !== code;
+      // Check if team was eliminated in any inner round (R16/QF/SF)
+      const r16e = findTeamInMap(innerRounds?.R16, code);
+      const qfe  = findTeamInMap(innerRounds?.QF,  code);
+      const sfe  = findTeamInMap(innerRounds?.SF,  code);
+      const lostInner =
+        (r16e?.winner != null && r16e.winner !== code) ||
+        (qfe?.winner  != null && qfe.winner  !== code) ||
+        (sfe?.winner  != null && sfe.winner  !== code);
+      const isLose = (status === 'final' && w !== null && w !== code) || lostInner;
+      // Suppress R32-winner styling for teams that were later eliminated
+      const win = isWin && !lostInner;
       const lblAngle = Math.atan2(pos.y - CY, pos.x - CX);
       const lx = Math.cos(lblAngle) * 33;
       const ly = Math.sin(lblAngle) * 33;
-      const border = isWin ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
+      const border = win ? teamCol(code) : isLose ? '#252530' : (status === 'live' ? LIVE_GREEN : '#2A2A3A');
       const isSelected = selectedTeam === code;
       const nodeOp = dimmed ? (isSelected ? 1 : onPath(i, 'match') ? 0.5 : 0.06) : 1;
       const matchKey = `${match.home}-${match.away}`;
@@ -358,7 +409,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
               });
             }
           }}>
-          <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={isWin ? '2.5' : '1.5'}
+          <circle r="24" fill="#0F0F1A" stroke={border} strokeWidth={win ? '2.5' : '1.5'}
             className={status === 'live' ? 'live-stroke' : ''} />
           {flagUrl(code)
             ? <image href={flagUrl(code)} x="-22" y="-22" width="44" height="44"
@@ -370,7 +421,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
           {isPick && <circle r="27" fill="none" stroke="#C9A84C" strokeWidth="2" strokeDasharray="4 3" opacity="0.9" />}
           <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central"
             fontSize="8" fontFamily="Inter, sans-serif"
-            fill={isWin ? '#3A8FFF' : isLose ? '#3A3A4A' : '#888070'} fontWeight={isWin ? '600' : '400'}>
+            fill={win ? '#3A8FFF' : isLose ? '#3A3A4A' : '#888070'} fontWeight={win ? '600' : '400'}>
             {code}
           </text>
         </g>
