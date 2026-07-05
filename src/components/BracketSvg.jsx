@@ -131,6 +131,22 @@ function getTeamIdx(matchups, code) {
   return matchups.findIndex(m => m.home === code || m.away === code);
 }
 
+// Returns how far a team has advanced: 0=lost R32, 1=reached R16, 2=reached QF, 3=reached SF, 4=in Final
+function getTeamAdvancement(code, matchupsArr, ld, ir) {
+  if (!code) return -1;
+  const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
+  if (idx < 0) return -1;
+  const d = getMatchData(ld, matchupsArr[idx].home, matchupsArr[idx].away);
+  if (getWinner(d) !== code) return 0;
+  const r16Info = buildR16Info(Math.floor(idx / 2), matchupsArr, ld, ir);
+  if (!r16Info?.winner || r16Info.winner !== code) return 1;
+  const qfInfo = buildQFInfo(Math.floor(idx / 4) * 4, matchupsArr, ld, ir);
+  if (!qfInfo?.winner || qfInfo.winner !== code) return 2;
+  const sfInfo = buildSFInfo(Math.floor(idx / 8) * 8, matchupsArr, ld, ir);
+  if (!sfInfo?.winner || sfInfo.winner !== code) return 3;
+  return 4;
+}
+
 function findNextMatchInfo(code, matchupsArr, ld, ir) {
   const idx = matchupsArr.findIndex(m => m.home === code || m.away === code);
   if (idx < 0) return null;
@@ -170,14 +186,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, onMatchEnt
   const { scale, style: pinchStyle, reset: resetZoom, handlers: pinchHandlers } = usePinchZoom();
   const teamIdx = selectedTeam ? getTeamIdx(matchups, selectedTeam) : -1;
   const dimmed  = teamIdx >= 0;
+  const adv     = dimmed ? getTeamAdvancement(selectedTeam, matchups, liveData, innerRounds) : -1;
 
   function onPath(i, level) {
     if (!dimmed) return true;
     if (level === 'match')  return i === teamIdx;
-    if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2);
-    if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4);
-    if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8);
-    if (level === 'center') return Math.floor(i / 8) === Math.floor(teamIdx / 8);
+    if (level === 'r16')    return Math.floor(i / 2) === Math.floor(teamIdx / 2) && adv >= 1;
+    if (level === 'qf')     return Math.floor(i / 4) === Math.floor(teamIdx / 4) && adv >= 2;
+    if (level === 'sf')     return Math.floor(i / 8) === Math.floor(teamIdx / 8) && adv >= 3;
+    if (level === 'center') return Math.floor(i / 8) === Math.floor(teamIdx / 8) && adv >= 4;
     return false;
   }
   const lines = [];
