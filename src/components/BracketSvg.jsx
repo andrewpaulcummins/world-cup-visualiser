@@ -339,11 +339,11 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     //   unplayed     → grey
     const GREY = '#707070';
     const homePathCol = status === 'live' ? LIVE_GREEN
-                      : status === 'final' && w === match.home ? teamCol(match.home)
+                      : status === 'final' && w === match.home ? (r32WinEliminated ? '#181822' : teamCol(match.home))
                       : status === 'final' && w !== match.home ? '#181822'
                       : GREY;
     const awayPathCol = status === 'live' ? LIVE_GREEN
-                      : status === 'final' && w === match.away ? teamCol(match.away)
+                      : status === 'final' && w === match.away ? (r32WinEliminated ? '#181822' : teamCol(match.away))
                       : status === 'final' && w !== match.away ? '#181822'
                       : GREY;
     // Advancing path (R32→R16): winner's team color when decided, grey otherwise;
