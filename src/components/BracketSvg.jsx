@@ -346,8 +346,9 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
                       : status === 'final' && w === match.away ? teamCol(match.away)
                       : status === 'final' && w !== match.away ? '#181822'
                       : GREY;
-    // Advancing path (R32→R16): winner's team color when decided, grey otherwise.
-    const advCol  = w ? teamCol(w) : GREY;
+    // Advancing path (R32→R16): winner's team color when decided, grey otherwise;
+    // near-black if that winner was later knocked out.
+    const advCol  = !w ? GREY : r32WinEliminated ? '#181822' : teamCol(w);
     const liveClass = status === 'live' ? 'live-stroke' : '';
 
     // ── Teams → R32 ──────────────────────────────────────────────────────────
@@ -377,7 +378,10 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     // ── R16 → QF (once per R16 pair) ─────────────────────────────────────────
     if (i % 2 === 0) {
       const sweep = Math.floor(i / 2) % 2 === 0 ? 1 : 0;
-      const r16LineCol = r16Info?.winner ? teamCol(r16Info.winner)
+      const r16WinEliminatedLine = r16Info?.winner
+        ? !isTeamStillAlive(r16Info.winner, matchups, liveData, innerRounds, finalMatch) : false;
+      const r16LineCol = r16Info?.winner
+        ? (r16WinEliminatedLine ? '#181822' : teamCol(r16Info.winner))
         : r16Info?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`r16qf-${i}`} opacity={r16Op}
@@ -392,7 +396,10 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     if (i % 4 === 0) {
       const sweep = Math.floor(i / 4) % 2 === 0 ? 1 : 0;
       const qfInfoLine = buildQFInfo(i, matchups, liveData, innerRounds);
-      const qfLineCol = qfInfoLine?.winner ? teamCol(qfInfoLine.winner)
+      const qfWinEliminatedLine = qfInfoLine?.winner
+        ? !isTeamStillAlive(qfInfoLine.winner, matchups, liveData, innerRounds, finalMatch) : false;
+      const qfLineCol = qfInfoLine?.winner
+        ? (qfWinEliminatedLine ? '#181822' : teamCol(qfInfoLine.winner))
         : qfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`qfsf-${i}`} opacity={qfOp}
@@ -407,7 +414,10 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     if (i % 8 === 0) {
       const ctr = polar(R_CTR, fa(sfFrac));
       const sfInfoLine = buildSFInfo(i, matchups, liveData, innerRounds);
-      const sfLineCol = sfInfoLine?.winner ? teamCol(sfInfoLine.winner)
+      const sfWinEliminatedLine = sfInfoLine?.winner
+        ? !isTeamStillAlive(sfInfoLine.winner, matchups, liveData, innerRounds, finalMatch) : false;
+      const sfLineCol = sfInfoLine?.winner
+        ? (sfWinEliminatedLine ? '#181822' : teamCol(sfInfoLine.winner))
         : sfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
