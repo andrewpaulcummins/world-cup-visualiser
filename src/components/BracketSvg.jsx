@@ -361,18 +361,18 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       <path key={`hl-${i}`} opacity={mOp}
         className={liveClass}
         d={arcElbow(posHome, faTeam(i * 2), R_R32, posR32, 1)}
-        fill="none" stroke={homePathCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
+        fill="none" stroke={homePathCol} strokeWidth="2.3" strokeOpacity="0.85" strokeLinejoin="round" />,
       <path key={`al-${i}`} opacity={mOp}
         className={liveClass}
         d={arcElbow(posAway, faTeam(i * 2 + 1), R_R32, posR32, 0)}
-        fill="none" stroke={awayPathCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
+        fill="none" stroke={awayPathCol} strokeWidth="2.3" strokeOpacity="0.85" strokeLinejoin="round" />,
     );
 
     // ── R32 → R16 ────────────────────────────────────────────────────────────
     lines.push(
       <path key={`r32r16-${i}`} opacity={mOp}
         d={arcElbow(posR32, angle, R_R16, posR16, i % 2 === 0 ? 1 : 0)}
-        fill="none" stroke={advCol} strokeWidth="1.8" strokeOpacity="0.85" strokeLinejoin="round" />,
+        fill="none" stroke={advCol} strokeWidth="2.3" strokeOpacity="0.85" strokeLinejoin="round" />,
     );
 
     // ── R16 → QF (once per R16 pair) ─────────────────────────────────────────
@@ -386,7 +386,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       lines.push(
         <path key={`r16qf-${i}`} opacity={r16Op}
           d={arcElbow(posR16, fa(r16Frac), R_QF, posQF, sweep)}
-          fill="none" stroke={r16LineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          fill="none" stroke={r16LineCol} strokeWidth="2.3" strokeOpacity="0.85"
           className={r16Info?.status === 'live' ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
@@ -404,7 +404,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       lines.push(
         <path key={`qfsf-${i}`} opacity={qfOp}
           d={arcElbow(posQF, fa(qfFrac), R_SF, posSF, sweep)}
-          fill="none" stroke={qfLineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          fill="none" stroke={qfLineCol} strokeWidth="2.3" strokeOpacity="0.85"
           className={qfInfoLine?.status === 'live' ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
@@ -422,7 +422,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
           d={`M ${posSF.x} ${posSF.y} L ${ctr.x} ${ctr.y}`}
-          fill="none" stroke={sfLineCol} strokeWidth="1.8" strokeOpacity="0.85"
+          fill="none" stroke={sfLineCol} strokeWidth="2.3" strokeOpacity="0.85"
           className={sfInfoLine?.status === 'live' ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
