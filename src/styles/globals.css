@@ -803,27 +803,48 @@ html, body {
   margin: 0 4px;
 }
 
-/* ── Header actions ── */
-.hdr-actions {
+.hdr-picks { color: var(--gold-dim); }
+
+/* ── Controls bar (share/download + view/bracket toggles) ── */
+.controls-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 20px 4px;
+}
+.controls-row {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.hdr-btn {
+.ctrl-btn {
   background: none;
-  border: 1px solid var(--node-border);
+  border: 1px solid rgba(255,255,255,0.08);
   color: var(--text-dim);
   font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  padding: 5px 14px;
-  border-radius: 16px;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.hdr-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
-.hdr-picks { color: var(--gold-dim); }
+.ctrl-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.ctrl-btn--active {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(201,168,76,0.06);
+}
+.ctrl-divider {
+  width: 1px;
+  height: 11px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 2px;
+}
 
 /* ── Goal Toast ── */
 .goal-toast {
@@ -1004,45 +1025,6 @@ html, body {
 }
 .splash-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
 
-/* ── View tabs ────────────────────────────────────────────── */
-.view-tabs {
-  display: flex; justify-content: center; gap: 4px;
-  padding: 14px 20px 0;
-}
-.view-tab {
-  background: none;
-  border: 1px solid var(--node-border);
-  color: var(--text-dim);
-  font-family: 'Inter', sans-serif;
-  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 6px 20px; border-radius: 20px; cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.view-tab:hover { border-color: var(--gold-dim); color: var(--gold); }
-.view-tab--active {
-  border-color: var(--gold); color: var(--gold);
-  background: rgba(201,168,76,0.08);
-}
-
-/* ── Predicted bracket toggle ─────────────────────────────── */
-.bracket-view-toggle {
-  display: flex; justify-content: center; gap: 4px;
-  padding: 8px 20px 0;
-}
-.bvt-btn {
-  background: none;
-  border: 1px solid var(--node-border);
-  color: var(--text-dim);
-  font-family: 'Inter', sans-serif;
-  font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 5px 16px; border-radius: 20px; cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.bvt-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
-.bvt-btn--active {
-  border-color: var(--gold); color: var(--gold);
-  background: rgba(201,168,76,0.08);
-}
 .predicted-banner {
   text-align: center;
   font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;

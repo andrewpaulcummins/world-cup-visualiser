@@ -5,6 +5,7 @@ import { useGoalDetector } from './hooks/useGoalDetector';
 import { usePredictions } from './hooks/usePredictions';
 import { useCommunityPicks } from './hooks/useCommunityPicks';
 import Header from './components/Header';
+import ControlsBar from './components/ControlsBar';
 import BracketSvg from './components/BracketSvg';
 import GroupStage from './components/GroupStage';
 import Legend from './components/Legend';
@@ -116,17 +117,8 @@ export default function App() {
       )}
       <Header lastUpdated={lastUpdated} apiStatus={apiStatus} picks={picks} />
 
-      <div className="view-tabs">
-        <button className={`view-tab${view === 'bracket' ? ' view-tab--active' : ''}`} onClick={() => setView('bracket')}>Bracket</button>
-        <button className={`view-tab${view === 'groups'  ? ' view-tab--active' : ''}`} onClick={() => setView('groups')}>Groups</button>
-      </div>
-
       {view === 'bracket' && (
         <>
-          <div className="bracket-view-toggle">
-            <button className={`bvt-btn${bracketView === 'actual' ? ' bvt-btn--active' : ''}`} onClick={() => setBracketView('actual')}>Actual</button>
-            <button className={`bvt-btn${bracketView === 'predicted' ? ' bvt-btn--active' : ''}`} onClick={() => setBracketView('predicted')}>My Bracket</button>
-          </div>
           {bracketView === 'predicted' && (
             <div className="predicted-banner">Tap any ring node to pick a winner</div>
           )}
@@ -154,6 +146,8 @@ export default function App() {
       )}
 
       {view === 'groups' && <GroupStage groupStage={groupStage} />}
+
+      <ControlsBar view={view} setView={setView} bracketView={bracketView} setBracketView={setBracketView} />
 
       <LiveMatchCard liveData={liveData} schedule={schedule} recentResults={recentResults} finalMatch={finalMatch} />
       <Tooltip tooltip={tooltip} />
