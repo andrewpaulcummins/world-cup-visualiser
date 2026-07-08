@@ -322,6 +322,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     const w      = getWinner(d);
     const status = d ? d.status : 'scheduled';
     const col    = matchColor(status);
+    // Was this R32 winner knocked out in a later round? Greys their advance-flag too.
+    const r32WinEliminated = w ? !isTeamStillAlive(w, matchups, liveData, innerRounds, finalMatch) : false;
 
     const homeScore = d ? (d.home === match.home ? d.homeScore : d.awayScore) : '-';
     const awayScore = d ? (d.home === match.home ? d.awayScore : d.homeScore) : '-';
@@ -458,7 +460,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           {flagUrl(code)
             ? <image href={flagUrl(code)} x="-22" y="-22" width="44" height="44"
                 clipPath="url(#flagClip)" preserveAspectRatio="xMidYMid slice"
-                style={isLose ? { filter: 'grayscale(100%) brightness(0.4)' } : {}} />
+                filter={isLose ? 'url(#eliminatedFlag)' : undefined} />
             : <text textAnchor="middle" dominantBaseline="central" fontSize="10" fill={isLose ? '#444' : '#888070'}>{code}</text>
           }
           {isLose && <circle r="22" fill="rgba(0,0,0,0.35)" />}
@@ -594,12 +596,14 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
         }}>
         {w ? (
           <>
-            <circle r="18" fill="#0F0F1A" stroke="#C9A84C" strokeWidth="1.5" />
+            <circle r="18" fill="#0F0F1A" stroke={r32WinEliminated ? '#252530' : '#C9A84C'} strokeWidth="1.5" />
             {flagUrl(w)
               ? <image href={flagUrl(w)} x="-16" y="-16" width="32" height="32"
-                  clipPath="url(#r32WinClip)" preserveAspectRatio="xMidYMid slice" />
-              : <text textAnchor="middle" dominantBaseline="central" fontSize="9" fill="#C9A84C">{w}</text>
+                  clipPath="url(#r32WinClip)" preserveAspectRatio="xMidYMid slice"
+                  filter={r32WinEliminated ? 'url(#eliminatedFlag)' : undefined} />
+              : <text textAnchor="middle" dominantBaseline="central" fontSize="9" fill={r32WinEliminated ? '#444' : '#C9A84C'}>{w}</text>
             }
+            {r32WinEliminated && <circle r="16" fill="rgba(0,0,0,0.35)" />}
           </>
         ) : status === 'live' ? (
           <circle r="5" fill={LIVE_GREEN} opacity="0.8" className="live-stroke" />
@@ -611,6 +615,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
 
     // ── R16 node (hover shows R16 matchup, winner flag when decided) ─────────
     if (i % 2 === 0) {
+      const r16WinEliminated = r16Info?.winner
+        ? !isTeamStillAlive(r16Info.winner, matchups, liveData, innerRounds, finalMatch) : false;
       nodes.push(
         <g key={`r16-${i}`} transform={`translate(${posR16.x},${posR16.y})`}
           opacity={onPath(i, 'r16') ? 1 : 0.06}
@@ -642,12 +648,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           }}>
           {r16Info?.winner ? (
             <>
-              <circle r="14" fill="#0F0F1A" stroke={teamCol(r16Info.winner)} strokeWidth="1.8" />
+              <circle r="14" fill="#0F0F1A"
+                stroke={r16WinEliminated ? '#252530' : teamCol(r16Info.winner)} strokeWidth="1.8" />
               {flagUrl(r16Info.winner)
                 ? <image href={flagUrl(r16Info.winner)} x="-12" y="-12" width="24" height="24"
-                    clipPath="url(#r16WinClip)" preserveAspectRatio="xMidYMid slice" />
-                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill="#C9A84C">{r16Info.winner}</text>
+                    clipPath="url(#r16WinClip)" preserveAspectRatio="xMidYMid slice"
+                    filter={r16WinEliminated ? 'url(#eliminatedFlag)' : undefined} />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill={r16WinEliminated ? '#444' : '#C9A84C'}>{r16Info.winner}</text>
               }
+              {r16WinEliminated && <circle r="12" fill="rgba(0,0,0,0.35)" />}
             </>
           ) : r16Info?.status === 'live' ? (
             <circle r="6" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
@@ -673,6 +682,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     // ── QF node (winner flag when decided) ────────────────────────────────────
     if (i % 4 === 0) {
       const qfInfo = buildQFInfo(i, matchups, liveData, innerRounds);
+      const qfWinEliminated = qfInfo?.winner
+        ? !isTeamStillAlive(qfInfo.winner, matchups, liveData, innerRounds, finalMatch) : false;
       nodes.push(
         <g key={`qf-${i}`} transform={`translate(${posQF.x},${posQF.y})`}
           style={{ cursor: 'pointer' }} opacity={onPath(i, 'qf') ? 1 : 0.06}
@@ -699,12 +710,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           }}>
           {qfInfo?.winner ? (
             <>
-              <circle r="13" fill="#0F0F1A" stroke={teamCol(qfInfo.winner)} strokeWidth="1.8" />
+              <circle r="13" fill="#0F0F1A"
+                stroke={qfWinEliminated ? '#252530' : teamCol(qfInfo.winner)} strokeWidth="1.8" />
               {flagUrl(qfInfo.winner)
                 ? <image href={flagUrl(qfInfo.winner)} x="-11" y="-11" width="22" height="22"
-                    clipPath="url(#qfWinClip)" preserveAspectRatio="xMidYMid slice" />
-                : <text textAnchor="middle" dominantBaseline="central" fontSize="7" fill="#C9A84C">{qfInfo.winner}</text>
+                    clipPath="url(#qfWinClip)" preserveAspectRatio="xMidYMid slice"
+                    filter={qfWinEliminated ? 'url(#eliminatedFlag)' : undefined} />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="7" fill={qfWinEliminated ? '#444' : '#C9A84C'}>{qfInfo.winner}</text>
               }
+              {qfWinEliminated && <circle r="11" fill="rgba(0,0,0,0.35)" />}
             </>
           ) : qfInfo?.status === 'live' ? (
             <circle r="6" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
@@ -731,6 +745,8 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     if (i % 8 === 0) {
       const sfDot = polar(R_CTR, fa(sfFrac));
       const sfInfo = buildSFInfo(i, matchups, liveData, innerRounds);
+      const sfWinEliminated = sfInfo?.winner
+        ? !isTeamStillAlive(sfInfo.winner, matchups, liveData, innerRounds, finalMatch) : false;
       nodes.push(
         <g key={`sf-${i}`} transform={`translate(${sfDot.x},${sfDot.y})`}
           style={{ cursor: 'pointer' }} opacity={onPath(i, 'sf') ? 1 : 0.06}
@@ -757,12 +773,15 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           }}>
           {sfInfo?.winner ? (
             <>
-              <circle r="15" fill="#0F0F1A" stroke={teamCol(sfInfo.winner)} strokeWidth="2" />
+              <circle r="15" fill="#0F0F1A"
+                stroke={sfWinEliminated ? '#252530' : teamCol(sfInfo.winner)} strokeWidth="2" />
               {flagUrl(sfInfo.winner)
                 ? <image href={flagUrl(sfInfo.winner)} x="-13" y="-13" width="26" height="26"
-                    clipPath="url(#sfWinClip)" preserveAspectRatio="xMidYMid slice" />
-                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill="#C9A84C">{sfInfo.winner}</text>
+                    clipPath="url(#sfWinClip)" preserveAspectRatio="xMidYMid slice"
+                    filter={sfWinEliminated ? 'url(#eliminatedFlag)' : undefined} />
+                : <text textAnchor="middle" dominantBaseline="central" fontSize="8" fill={sfWinEliminated ? '#444' : '#C9A84C'}>{sfInfo.winner}</text>
               }
+              {sfWinEliminated && <circle r="13" fill="rgba(0,0,0,0.35)" />}
             </>
           ) : sfInfo?.status === 'live' ? (
             <circle r="7" fill={LIVE_GREEN} opacity="0.9" className="live-stroke" />
@@ -844,6 +863,17 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
           <clipPath id="r16WinClip"><circle r="12" /></clipPath>
           <clipPath id="qfWinClip"><circle r="11" /></clipPath>
           <clipPath id="sfWinClip"><circle r="13" /></clipPath>
+          {/* Native SVG filter (not CSS `filter` style) — CSS filter on nested
+              <image> elements renders as a weak dim rather than true greyscale
+              on iOS/mobile Safari, so eliminated flags need this instead. */}
+          <filter id="eliminatedFlag" x="-20%" y="-20%" width="140%" height="140%">
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0.4" />
+              <feFuncG type="linear" slope="0.4" />
+              <feFuncB type="linear" slope="0.4" />
+            </feComponentTransfer>
+          </filter>
         </defs>
 
         <g>{lines}</g>
