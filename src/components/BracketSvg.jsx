@@ -310,6 +310,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
   }
   const lines = [];
   const nodes = [];
+  const gradientDefs = [];
 
   matchups.forEach((match, i) => {
     const angle = fa(i);
@@ -440,15 +441,31 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       // Unlike the earlier rounds, this segment leads straight to a place in
       // the Final — the stakes of the live SF itself — so it flashes green
       // for the whole semi-final, not just once someone's through to it.
-      const sfState   = sfInfoLine?.status === 'live'
-        ? { color: LIVE_GREEN, live: true }
-        : advancingLineState(sfInfoLine?.winner, finalEntryForSFWinner, sfWinEliminatedLine);
-      const sfLineCol = sfState.color;
+      let sfLineCol, sfLive = false;
+      if (sfInfoLine?.status === 'live') {
+        sfLineCol = LIVE_GREEN;
+        sfLive = true;
+      } else if (!sfInfoLine?.winner && sfInfoLine?.homeCode && sfInfoLine?.awayCode) {
+        // Both semifinalists are locked in but haven't kicked off yet — show
+        // both their colors on this shared segment, since it's up for grabs
+        // between exactly the two of them.
+        const sfGradId = `sfGrad-${sfInfoLine.homeCode}-${sfInfoLine.awayCode}`;
+        gradientDefs.push(
+          <linearGradient key={sfGradId} id={sfGradId} gradientUnits="userSpaceOnUse"
+            x1={posSF.x} y1={posSF.y} x2={ctr.x} y2={ctr.y}>
+            <stop offset="0%" stopColor={teamCol(sfInfoLine.homeCode)} />
+            <stop offset="100%" stopColor={teamCol(sfInfoLine.awayCode)} />
+          </linearGradient>,
+        );
+        sfLineCol = `url(#${sfGradId})`;
+      } else {
+        sfLineCol = advancingLineState(sfInfoLine?.winner, finalEntryForSFWinner, sfWinEliminatedLine).color;
+      }
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
           d={`M ${posSF.x} ${posSF.y} L ${ctr.x} ${ctr.y}`}
           fill="none" stroke={sfLineCol} strokeWidth="4.2" strokeOpacity="0.85"
-          className={sfState.live ? 'live-stroke' : ''}
+          className={sfLive ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
     }
@@ -909,6 +926,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
               <feFuncB type="linear" slope="0.4" />
             </feComponentTransfer>
           </filter>
+          {gradientDefs}
         </defs>
 
         <g>{lines}</g>
