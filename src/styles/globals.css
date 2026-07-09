@@ -229,6 +229,17 @@ html, body {
   border-radius: 50%;
 }
 
+.legend-dot--scheduled {
+  background: #0D0D1A;
+  border: 1.5px solid #707070;
+}
+
+.legend-dot--live {
+  background: #00E676;
+  box-shadow: 0 0 6px #00E676;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
 .legend-divider {
   width: 1px;
   height: 14px;
@@ -236,19 +247,18 @@ html, body {
   margin: 0 4px;
 }
 
-.legend-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
+.legend-info-btn {
+  background: none;
+  border: none;
   color: var(--text-dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
 }
-
-.legend-hint-icon {
-  font-size: 0.85rem;
-  line-height: 1;
-  color: var(--text-dim);
-}
+.legend-info-btn:hover { color: var(--gold); }
 
 /* ── API Panel ── */
 .api-panel {

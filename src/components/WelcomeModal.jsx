@@ -37,6 +37,12 @@ export default function WelcomeModal() {
   }, []);
 
   useEffect(() => {
+    const onShowHelp = () => setVisible(true);
+    window.addEventListener('wc26-show-help', onShowHelp);
+    return () => window.removeEventListener('wc26-show-help', onShowHelp);
+  }, []);
+
+  useEffect(() => {
     if (!visible) return;
     const onKey = e => { if (e.key === 'Escape') dismiss(); };
     window.addEventListener('keydown', onKey);
