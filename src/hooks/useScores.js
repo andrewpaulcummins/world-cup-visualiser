@@ -250,7 +250,7 @@ export function useScores() {
           const inBracketGS = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
           console.log(`[WC GS] ${home} v ${away} | status=${status} | ${homeScore}-${awayScore} | inBracket=${inBracketGS} | goals:`, f.goals);
           if (inBracketGS) {
-            const winner = homeWon ? home : awayWon ? away : null;
+            const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
             const e = { home, away, matchId: f.matchId, homeScore, awayScore, status, minuteStr, duration, penHome, penAway, winner, utcDate, goals: f.goals || [] };
             updated[`${home}-${away}`] = e;
             updated[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
@@ -260,7 +260,7 @@ export function useScores() {
 
         // QF fixtures
         if (isQFRound(round) && home && away) {
-          const winner = homeWon ? home : awayWon ? away : null;
+          const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
           const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           qfMap[`${home}-${away}`] = e;
           qfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
@@ -270,7 +270,7 @@ export function useScores() {
 
         // SF fixtures
         if (isSFRound(round) && home && away) {
-          const winner = homeWon ? home : awayWon ? away : null;
+          const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
           const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           sfMap[`${home}-${away}`] = e;
           sfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
@@ -280,7 +280,7 @@ export function useScores() {
 
         // Final fixture
         if (isFinalRound(round) && home && away) {
-          const winner = homeWon ? home : awayWon ? away : null;
+          const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
           if (winner) setTournamentWinner(winner);
           finalMatchData = { home, away, matchId: f.matchId, utcDate, status, homeScore, awayScore, penHome, penAway, winner, minuteStr, duration };
           if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Final', winner, penHome, penAway, duration });
@@ -289,7 +289,7 @@ export function useScores() {
 
         // R16 fixtures → inner-ring tooltip data
         if (isR16Round(round) && home && away) {
-          const winner = homeWon ? home : awayWon ? away : null;
+          const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
           const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
           r16Map[`${home}-${away}`] = e;
           r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
@@ -300,7 +300,7 @@ export function useScores() {
         const inBracket = matchupSet.has(`${home}-${away}`) || matchupSet.has(`${away}-${home}`);
         if (!inBracket) continue;
 
-        const winner = homeWon ? home : awayWon ? away : null;
+        const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
 
         console.log(`[WC] ${home} v ${away} | status=${short}→${status} | ${homeScore}-${awayScore} | ${minuteStr || '-'} | goals:`, f.goals);
 
