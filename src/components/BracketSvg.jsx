@@ -156,6 +156,20 @@ function findTeamInMap(map, code) {
   return null;
 }
 
+// Color (+ live-pulse flag) for an "advancing" line segment — the stretch
+// from a round's decided winner-node onward to the next round's node.
+// Green + pulsing while that winner's NEXT match is live (they're mid-shift-
+// to-the-next-round right now); their static team color once through;
+// near-black if later eliminated; grey while this round itself is still
+// undecided (there's no winner to advance yet, so nothing to show here —
+// that round's own node already carries its own live-pulsing dot).
+function advancingLineState(winner, nextRoundEntry, eliminated) {
+  if (!winner) return { color: '#707070', live: false };
+  if (nextRoundEntry?.status === 'live') return { color: LIVE_GREEN, live: true };
+  if (eliminated) return { color: '#454555', live: false };
+  return { color: teamCol(winner), live: false };
+}
+
 function makeInnerInfo(stage, entry) {
   return {
     stage,
@@ -346,9 +360,12 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
                       : status === 'final' && w === match.away ? (r32WinEliminated ? '#454555' : teamCol(match.away))
                       : status === 'final' && w !== match.away ? '#454555'
                       : GREY;
-    // Advancing path (R32→R16): winner's team color when decided, grey otherwise;
-    // near-black if that winner was later knocked out.
-    const advCol  = !w ? GREY : r32WinEliminated ? '#454555' : teamCol(w);
+    // Advancing path (R32→R16): green+pulsing if the R32 winner's R16 match
+    // is live right now, their team color once through, grey while R32
+    // itself is still undecided, near-black if later knocked out.
+    const r16EntryForR32Winner = w ? findTeamInMap(innerRounds?.R16, w) : null;
+    const advState = advancingLineState(w, r16EntryForR32Winner, r32WinEliminated);
+    const advCol   = advState.color;
     const liveClass = status === 'live' ? 'live-stroke' : '';
 
     // ── Teams → R32 ──────────────────────────────────────────────────────────
@@ -371,6 +388,7 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
     // ── R32 → R16 ────────────────────────────────────────────────────────────
     lines.push(
       <path key={`r32r16-${i}`} opacity={mOp}
+        className={advState.live ? 'live-stroke' : ''}
         d={arcElbow(posR32, angle, R_R16, posR16, i % 2 === 0 ? 1 : 0)}
         fill="none" stroke={advCol} strokeWidth="4.2" strokeOpacity="0.85" strokeLinejoin="round" />,
     );
@@ -380,14 +398,14 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       const sweep = Math.floor(i / 2) % 2 === 0 ? 1 : 0;
       const r16WinEliminatedLine = r16Info?.winner
         ? !isTeamStillAlive(r16Info.winner, matchups, liveData, innerRounds, finalMatch) : false;
-      const r16LineCol = r16Info?.winner
-        ? (r16WinEliminatedLine ? '#454555' : teamCol(r16Info.winner))
-        : r16Info?.status === 'live' ? LIVE_GREEN : GREY;
+      const qfEntryForR16Winner = r16Info?.winner ? findTeamInMap(innerRounds?.QF, r16Info.winner) : null;
+      const r16State  = advancingLineState(r16Info?.winner, qfEntryForR16Winner, r16WinEliminatedLine);
+      const r16LineCol = r16State.color;
       lines.push(
         <path key={`r16qf-${i}`} opacity={r16Op}
           d={arcElbow(posR16, fa(r16Frac), R_QF, posQF, sweep)}
           fill="none" stroke={r16LineCol} strokeWidth="4.2" strokeOpacity="0.85"
-          className={r16Info?.status === 'live' ? 'live-stroke' : ''}
+          className={r16State.live ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
     }
@@ -398,14 +416,14 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       const qfInfoLine = buildQFInfo(i, matchups, liveData, innerRounds);
       const qfWinEliminatedLine = qfInfoLine?.winner
         ? !isTeamStillAlive(qfInfoLine.winner, matchups, liveData, innerRounds, finalMatch) : false;
-      const qfLineCol = qfInfoLine?.winner
-        ? (qfWinEliminatedLine ? '#454555' : teamCol(qfInfoLine.winner))
-        : qfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
+      const sfEntryForQFWinner = qfInfoLine?.winner ? findTeamInMap(innerRounds?.SF, qfInfoLine.winner) : null;
+      const qfState   = advancingLineState(qfInfoLine?.winner, sfEntryForQFWinner, qfWinEliminatedLine);
+      const qfLineCol = qfState.color;
       lines.push(
         <path key={`qfsf-${i}`} opacity={qfOp}
           d={arcElbow(posQF, fa(qfFrac), R_SF, posSF, sweep)}
           fill="none" stroke={qfLineCol} strokeWidth="4.2" strokeOpacity="0.85"
-          className={qfInfoLine?.status === 'live' ? 'live-stroke' : ''}
+          className={qfState.live ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
     }
@@ -416,14 +434,16 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       const sfInfoLine = buildSFInfo(i, matchups, liveData, innerRounds);
       const sfWinEliminatedLine = sfInfoLine?.winner
         ? !isTeamStillAlive(sfInfoLine.winner, matchups, liveData, innerRounds, finalMatch) : false;
-      const sfLineCol = sfInfoLine?.winner
-        ? (sfWinEliminatedLine ? '#454555' : teamCol(sfInfoLine.winner))
-        : sfInfoLine?.status === 'live' ? LIVE_GREEN : GREY;
+      const finalEntryForSFWinner = sfInfoLine?.winner &&
+        (finalMatch?.home === sfInfoLine.winner || finalMatch?.away === sfInfoLine.winner)
+        ? finalMatch : null;
+      const sfState   = advancingLineState(sfInfoLine?.winner, finalEntryForSFWinner, sfWinEliminatedLine);
+      const sfLineCol = sfState.color;
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
           d={`M ${posSF.x} ${posSF.y} L ${ctr.x} ${ctr.y}`}
           fill="none" stroke={sfLineCol} strokeWidth="4.2" strokeOpacity="0.85"
-          className={sfInfoLine?.status === 'live' ? 'live-stroke' : ''}
+          className={sfState.live ? 'live-stroke' : ''}
           strokeLinejoin="round" />,
       );
     }
