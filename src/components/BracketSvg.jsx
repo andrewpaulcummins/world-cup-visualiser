@@ -437,7 +437,12 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
       const finalEntryForSFWinner = sfInfoLine?.winner &&
         (finalMatch?.home === sfInfoLine.winner || finalMatch?.away === sfInfoLine.winner)
         ? finalMatch : null;
-      const sfState   = advancingLineState(sfInfoLine?.winner, finalEntryForSFWinner, sfWinEliminatedLine);
+      // Unlike the earlier rounds, this segment leads straight to a place in
+      // the Final — the stakes of the live SF itself — so it flashes green
+      // for the whole semi-final, not just once someone's through to it.
+      const sfState   = sfInfoLine?.status === 'live'
+        ? { color: LIVE_GREEN, live: true }
+        : advancingLineState(sfInfoLine?.winner, finalEntryForSFWinner, sfWinEliminatedLine);
       const sfLineCol = sfState.color;
       lines.push(
         <path key={`sfctr-${i}`} opacity={onPath(i, 'center') ? 1 : 0.06}
