@@ -29,12 +29,12 @@ function teamName(code) {
 }
 
 // ── Live match card ──────────────────────────────────────────────────────────
-function LiveCard({ m, d }) {
+function LiveCard({ m, d, roundLabel }) {
   return (
     <div className="lmc">
       <div className="lmc-header">
         <span className="lmc-badge">● LIVE</span>
-        <span className="lmc-round">Round of 32</span>
+        <span className="lmc-round">{roundLabel}</span>
         {d.minuteStr && <span className="lmc-minute">{d.minuteStr}</span>}
         <a href="https://www.rte.ie/player/onnow" target="_blank" rel="noopener noreferrer" className="lmc-watch-btn">
           Watch on RTÉ ▶
@@ -218,11 +218,34 @@ function FinalCard({ match }) {
   );
 }
 
+// Pull live fixtures out of an inner-round map (R16/QF/SF), which stores each
+// match twice (once per home/away orientation) — dedupe on the unordered pair.
+function innerLiveMatches(map, roundLabel) {
+  if (!map) return [];
+  const seen = new Set();
+  const out = [];
+  for (const d of Object.values(map)) {
+    if (d?.status !== 'live') continue;
+    const key = [d.home, d.away].sort().join('-');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ m: { home: d.home, away: d.away }, d, roundLabel });
+  }
+  return out;
+}
+
 // ── Main export ──────────────────────────────────────────────────────────────
-export default function LiveMatchCard({ liveData, schedule, recentResults, finalMatch }) {
-  const liveMatches = MATCHUPS
-    .map(m => ({ m, d: liveData[`${m.home}-${m.away}`] }))
+export default function LiveMatchCard({ liveData, innerRounds, schedule, recentResults, finalMatch }) {
+  const r32Live = MATCHUPS
+    .map(m => ({ m, d: liveData[`${m.home}-${m.away}`], roundLabel: 'Round of 32' }))
     .filter(({ d }) => d?.status === 'live');
+
+  const liveMatches = [
+    ...r32Live,
+    ...innerLiveMatches(innerRounds?.R16, 'Round of 16'),
+    ...innerLiveMatches(innerRounds?.QF, 'Quarter-Final'),
+    ...innerLiveMatches(innerRounds?.SF, 'Semi-Final'),
+  ];
 
   const liveKeys = new Set(liveMatches.map(({ m }) => `${m.home}-${m.away}`));
   const upcoming = (schedule || []).filter(
@@ -238,7 +261,7 @@ export default function LiveMatchCard({ liveData, schedule, recentResults, final
   return (
     <div className="live-section">
       {hasFinal && <FinalCard match={finalMatch} />}
-      {liveMatches.map(({ m, d }) => <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} />)}
+      {liveMatches.map(({ m, d, roundLabel }) => <LiveCard key={`${m.home}-${m.away}`} m={m} d={d} roundLabel={roundLabel} />)}
       {nextUp && <NextUpCard match={nextUp} />}
       <RecentResultsList results={recentResults} />
       <ScheduleList matches={restUpcoming} />

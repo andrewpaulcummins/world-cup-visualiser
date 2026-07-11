@@ -261,7 +261,7 @@ export function useScores() {
         // QF fixtures
         if (isQFRound(round) && home && away) {
           const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, minuteStr, duration };
           qfMap[`${home}-${away}`] = e;
           qfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
           if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Quarter-Final', winner, penHome, penAway, duration });
@@ -271,7 +271,7 @@ export function useScores() {
         // SF fixtures
         if (isSFRound(round) && home && away) {
           const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, minuteStr, duration };
           sfMap[`${home}-${away}`] = e;
           sfMap[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
           if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Semi-Final', winner, penHome, penAway, duration });
@@ -290,7 +290,7 @@ export function useScores() {
         // R16 fixtures → inner-ring tooltip data
         if (isR16Round(round) && home && away) {
           const winner = status === 'final' ? (homeWon ? home : awayWon ? away : null) : null;
-          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, duration };
+          const e = { home, away, utcDate, status, homeScore, awayScore, winner, penHome, penAway, minuteStr, duration };
           r16Map[`${home}-${away}`] = e;
           r16Map[`${away}-${home}`] = { ...e, home: away, away: home, homeScore: awayScore, awayScore: homeScore, penHome: penAway, penAway: penHome };
           if (status === 'final') resultsArr.push({ home, away, homeScore, awayScore, utcDate, roundLabel: 'Round of 16', winner, penHome, penAway, duration });

@@ -149,7 +149,7 @@ export default function App() {
 
       <ControlsBar view={view} setView={setView} bracketView={bracketView} setBracketView={setBracketView} />
 
-      <LiveMatchCard liveData={liveData} schedule={schedule} recentResults={recentResults} finalMatch={finalMatch} />
+      <LiveMatchCard liveData={liveData} innerRounds={innerRounds} schedule={schedule} recentResults={recentResults} finalMatch={finalMatch} />
       <Tooltip tooltip={tooltip} />
       {modalInfo && (
         <PredictModal
