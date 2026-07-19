@@ -861,10 +861,19 @@ export default function BracketSvg({ matchups, liveData, innerRounds, finalMatch
   const showFinalScore = _fm &&
     (_fm.status === 'live' || _fm.status === 'final') &&
     _fm.homeScore != null && _fm.awayScore != null;
+  // The API's home/away order has nothing to do with which SF half (left/right
+  // of the circle) each finalist actually came from — order the score to match
+  // what's visually on screen instead, so it doesn't read backwards.
+  const fmHomeIdx    = _fm ? getTeamIdx(matchups, _fm.home) : -1;
+  const fmHomeIsRight = fmHomeIdx >= 0 && Math.floor(fmHomeIdx / 8) === 0;
   const finalScoreStr = showFinalScore
     ? (_fm.duration === 'PENALTY_SHOOTOUT' && _fm.penHome != null
-        ? `${_fm.homeScore}(${_fm.penHome}) – ${_fm.awayScore}(${_fm.penAway})`
-        : `${_fm.homeScore} – ${_fm.awayScore}`)
+        ? fmHomeIsRight
+          ? `${_fm.awayScore}(${_fm.penAway}) – ${_fm.homeScore}(${_fm.penHome})`
+          : `${_fm.homeScore}(${_fm.penHome}) – ${_fm.awayScore}(${_fm.penAway})`
+        : fmHomeIsRight
+          ? `${_fm.awayScore} – ${_fm.homeScore}`
+          : `${_fm.homeScore} – ${_fm.awayScore}`)
     : null;
   const finalScoreColor = _fm?.status === 'live' ? LIVE_GREEN : '#C9A84C';
 
